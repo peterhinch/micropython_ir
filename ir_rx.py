@@ -166,7 +166,9 @@ class RC5_IR(IR_RX):
         self.callback(val, addr, ctrl, *self.args)
 
 class RC6_M0(IR_RX):
-    # Even on Pyboard D these 444us nominal pulses can be recorded as up to 705us
+    # Even on Pyboard D the 444μs nominal pulses can be recorded as up to 705μs
+    # Scope shows 360-520 μs (-84μs +76μs relative to nominal)
+    # Header nominal 2666, 889, 444, 889, 444, 444, 444, 444 carrier ON at end
     hdr = ((1800, 4000), (593, 1333), (222, 750), (593, 1333), (222, 750), (222, 750), (222, 750), (222, 750))
     def __init__(self, pin, callback, *args):
         # Block lasts 23ms nominal and has <=44 edges
@@ -179,43 +181,47 @@ class RC6_M0(IR_RX):
                 raise RuntimeError(OVERRUN if nedges > 28 else BADSTART)
             for x, lims in enumerate(self.hdr):
                 width = ticks_diff(self._times[x + 1], self._times[x])
+                #print('x = {}, width = {}, lims = {}'.format(x, width, lims))
                 if not (lims[0] < width < lims[1]):
-                    print('Bad start', x, width, lims)
+                    #print('Bad start', x, width, lims)
                     raise RuntimeError(BADSTART)
             x += 1
             width = ticks_diff(self._times[x + 1], self._times[x])
-            ctrl = width > 889  # Long bit
-            start = x + 2  # Skip 2nd long bit
+            # Long bit is 889μs (0) or 1333μs (1)
+            ctrl = width > 1111  # If 1333, ctrl == True and carrier is off
+            start = x + 2 if ctrl else x + 3 # Skip 2nd long bit
 
             # Regenerate bitstream
-            bits = 0
-            bit = 0
-            for x in range(start, nedges):
-                width = ticks_diff(self._times[x], self._times[x - 1])
+            bits = 1  # MSB is a dummy 1 to mark start of bitstream
+            bit = int(ctrl)
+            for x in range(start, nedges - 1):
+                width = ticks_diff(self._times[x + 1], self._times[x])
                 if not 222 < width < 1333:
-                    print('Width', width)
+                    #print('Width', width, 'x', x)
                     raise RuntimeError(BADBLOCK)
                 for _ in range(1 if width < 666 else 2):
                     bits <<= 1
                     bits |= bit
                 bit ^= 1
-            print(bin(bits), len(bin(bits)) - 2)
+            print('36-bit format {:036b} x={} nedges={}'.format(bits, x, nedges))
 
-            # Decode Manchester code
-            x = 32
+            # Decode Manchester code. Bitstream varies in length: find MS 1.
+            x = 36
             while not bits >> x:
                 x -= 1
-            m0 = 1 << (x - 1)
-            m1 = 1 << x  # MSB of pair
+            # Now points to dummy 1
+            x -= 2  # Point to MS biphase pair
+            m0 = 1 << x
+            m1 = m0 << 1  # MSB of pair
             v = 0  # 16 bit bitstream
             for _ in range(16):
                 v <<= 1
                 b0 = (bits & m0) > 0
                 b1 = (bits & m1) > 0
-                #print(int(b1), int(b0))
+                print(int(b1), int(b0))
                 if b0 == b1:
                     raise RuntimeError(BADBLOCK)
-                v |= b0
+                v |= b1
                 m0 >>= 2
                 m1 >>= 2
             # Split into fields (val, addr)

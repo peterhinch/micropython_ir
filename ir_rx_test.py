@@ -9,7 +9,7 @@
 from sys import platform
 import time
 from machine import Pin, freq
-from arem import *
+from ir_rx import *
 
 ESP32 = platform == 'esp32' or platform == 'esp32_LoBo'
 

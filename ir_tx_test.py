@@ -54,13 +54,13 @@ async def main(proto):
         # Option to send REPEAT code. Most remotes do this.
         rep_code = True
     elif proto == 5:
-        irb = RC5(pin, 38000)
+        irb = RC5(pin, 38000)  # My decoder chip is 38KHz
     elif proto == 6:
-        irb = RC6_M0(pin, 38000)
+        irb = RC6_M0(pin, 38000, True)  # Verbose
 
     b = []  # Rbutton instances
     b.append(Rbutton(irb, Pin('X3', Pin.IN, Pin.PULL_UP), 0x1, 0x7, rep_code))
-    b.append(Rbutton(irb, Pin('X4', Pin.IN, Pin.PULL_UP), 0x10, 0xb, rep_code))
+    b.append(Rbutton(irb, Pin('X4', Pin.IN, Pin.PULL_UP), 0xfa, 0xb, rep_code))
     led = LED(1)
     while True:
         await asyncio.sleep_ms(500)  # Obligatory flashing LED.
