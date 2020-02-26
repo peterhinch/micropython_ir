@@ -40,6 +40,7 @@ BADADDR = -7
 # a block start and a repeat code start (~108ms depending on protocol)
 
 class IR_RX():
+    verbose = False
     def __init__(self, pin, nedges, tblock, callback, *args):  # Optional args for callback
         self._nedges = nedges
         self._tblock = tblock
@@ -55,7 +56,7 @@ class IR_RX():
             pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING), hard = True)
         self.edge = 0
         self.tim = Timer(-1)  # Sofware timer
-        self.cb = self._decode
+        self.cb = self.decode
 
 
     # Pin interrupt. Save time of each edge for later decode.
@@ -69,60 +70,57 @@ class IR_RX():
             self.edge += 1
 
 class NEC_IR(IR_RX):
-    def __init__(self, pin, callback, extended, *args):
+    def __init__(self, pin, callback, extended=True, *args):
         # Block lasts <= 80ms and has 68 edges
         tblock = 80 if extended else 73  # Allow for some tx tolerance (?)
         super().__init__(pin, 68, tblock, callback, *args)
         self._extended = extended
         self._addr = 0
 
-    def _decode(self, _):
-        overrun = self.edge > 68
-        val = OVERRUN if overrun else BADSTART
-        if not overrun:
+    def decode(self, _):
+        try:
+            if self.edge > 68:
+                raise RuntimeError(OVERRUN)
             width = ticks_diff(self._times[1], self._times[0])
-            if width > 4000:  # 9ms leading mark for all valid data
-                width = ticks_diff(self._times[2], self._times[1])
-                if width > 3000: # 4.5ms space for normal data
-                    if self.edge < 68:
-                        # Haven't received the correct number of edges
-                        val = BADBLOCK
-                    else:
-                        # Time spaces only (marks are always 562.5µs)
-                        # Space is 1.6875ms (1) or 562.5µs (0)
-                        # Skip last bit which is always 1
-                        val = 0
-                        for edge in range(3, 68 - 2, 2):
-                            val >>= 1
-                            if ticks_diff(self._times[edge + 1], self._times[edge]) > 1120:
-                                val |= 0x80000000
-                elif width > 1700: # 2.5ms space for a repeat code. Should have exactly 4 edges.
-                    val = REPEAT if self.edge == 4 else BADREP
-        addr = 0
-        if val >= 0:  # validate. Byte layout of val ~cmd cmd ~addr addr
-            addr = val & 0xff
-            cmd = (val >> 16) & 0xff
-            if addr == ((val >> 8) ^ 0xff) & 0xff:  # 8 bit address OK
-                val = cmd if cmd == (val >> 24) ^ 0xff else BADDATA
-                self._addr = addr
+            if width < 4000:  # 9ms leading mark for all valid data
+                raise RuntimeError(BADSTART)
+            width = ticks_diff(self._times[2], self._times[1])
+            if width > 3000:  # 4.5ms space for normal data
+                if self.edge < 68:  # Haven't received the correct number of edges
+                    raise RuntimeError(BADBLOCK)
+                # Time spaces only (marks are always 562.5µs)
+                # Space is 1.6875ms (1) or 562.5µs (0)
+                # Skip last bit which is always 1
+                val = 0
+                for edge in range(3, 68 - 2, 2):
+                    val >>= 1
+                    if ticks_diff(self._times[edge + 1], self._times[edge]) > 1120:
+                        val |= 0x80000000
+            elif width > 1700: # 2.5ms space for a repeat code. Should have exactly 4 edges.
+                raise RuntimeError(REPEAT if self.edge == 4 else BADREP)  # Treat REPEAT as error.
             else:
+                raise RuntimeError(BADSTART)
+            addr = val & 0xff  # 8 bit addr
+            cmd = (val >> 16) & 0xff
+            if cmd != (val >> 24) ^ 0xff:
+                raise RuntimeError(BADDATA)
+            if addr != ((val >> 8) ^ 0xff) & 0xff:  # 8 bit addr doesn't match check
+                if not self._extended:
+                    raise RuntimeError(BADADDR)
                 addr |= val & 0xff00  # pass assumed 16 bit address to callback
-                if self._extended:
-                    val = cmd if cmd == (val >> 24) ^ 0xff else BADDATA
-                    self._addr = addr
-                else:
-                    val = BADADDR
-        if val == REPEAT:
-            addr = self._addr  # Last valid addresss
+            self._addr = addr
+        except RuntimeError as e:
+            cmd = e.args[0]
+            addr = self._addr if cmd == REPEAT else 0  # REPEAT uses last address
         self.edge = 0  # Set up for new data burst and run user callback
-        self.callback(val, addr, *self.args)
+        self.callback(cmd, addr, 0, *self.args)
 
 class RC5_IR(IR_RX):
     def __init__(self, pin, callback, *args):
         # Block lasts <= 30ms and has <= 28 edges
         super().__init__(pin, 28, 30, callback, *args)
 
-    def _decode(self, _):
+    def decode(self, _):
         try:
             nedges = self.edge  # No. of edges detected
             if not 14 <= nedges <= 28:
@@ -138,7 +136,7 @@ class RC5_IR(IR_RX):
                     bits <<= 1
                     bits |= bit
                 bit ^= 1
-            #print(bin(bits))  # Matches inverted scope waveform
+            self.verbose and print(bin(bits))  # Matches inverted scope waveform
             # Decode Manchester code
             x = 30
             while not bits >> x:
@@ -174,60 +172,63 @@ class RC6_M0(IR_RX):
         # Block lasts 23ms nominal and has <=44 edges
         super().__init__(pin, 44, 30, callback, *args)
 
-    def _decode(self, _):
+    def decode(self, _):
         try:
             nedges = self.edge  # No. of edges detected
             if not 22 <= nedges <= 44:
                 raise RuntimeError(OVERRUN if nedges > 28 else BADSTART)
             for x, lims in enumerate(self.hdr):
                 width = ticks_diff(self._times[x + 1], self._times[x])
-                #print('x = {}, width = {}, lims = {}'.format(x, width, lims))
                 if not (lims[0] < width < lims[1]):
-                    #print('Bad start', x, width, lims)
+                    self.verbose and print('Bad start', x, width, lims)
                     raise RuntimeError(BADSTART)
             x += 1
             width = ticks_diff(self._times[x + 1], self._times[x])
-            # Long bit is 889μs (0) or 1333μs (1)
-            ctrl = width > 1111  # If 1333, ctrl == True and carrier is off
-            start = x + 2 if ctrl else x + 3 # Skip 2nd long bit
-
-            # Regenerate bitstream
-            bits = 1  # MSB is a dummy 1 to mark start of bitstream
-            bit = int(ctrl)
-            for x in range(start, nedges - 1):
-                width = ticks_diff(self._times[x + 1], self._times[x])
-                if not 222 < width < 1333:
-                    #print('Width', width, 'x', x)
-                    raise RuntimeError(BADBLOCK)
-                for _ in range(1 if width < 666 else 2):
-                    bits <<= 1
-                    bits |= bit
+            # 2nd bit of last 0 is 444μs (0) or 1333μs (1)
+            if not 222 < width < 1555:
+                self.verbose and print('Bad block 1 Width', width, 'x', x)
+                raise RuntimeError(BADBLOCK)
+            short = width < 889
+            v = int(not short)
+            bit = v
+            bits = 1  # Bits decoded
+            x += 1 + int(short)
+            width = ticks_diff(self._times[x + 1], self._times[x])
+            if not 222 < width < 1555:
+                self.verbose and print('Bad block 2 Width', width, 'x', x)
+                raise RuntimeError(BADBLOCK)
+            short = width < 1111
+            if not short:
                 bit ^= 1
-            print('36-bit format {:036b} x={} nedges={}'.format(bits, x, nedges))
-
-            # Decode Manchester code. Bitstream varies in length: find MS 1.
-            x = 36
-            while not bits >> x:
-                x -= 1
-            # Now points to dummy 1
-            x -= 2  # Point to MS biphase pair
-            m0 = 1 << x
-            m1 = m0 << 1  # MSB of pair
-            v = 0  # 16 bit bitstream
-            for _ in range(16):
-                v <<= 1
-                b0 = (bits & m0) > 0
-                b1 = (bits & m1) > 0
-                print(int(b1), int(b0))
-                if b0 == b1:
+            x += 1 + int(short)  # If it's short, we know width of next
+            v <<= 1
+            v |= bit  # MSB of result
+            bits += 1
+            # Decode bitstream
+            while bits < 17:
+                # -1 convert count to index, -1 because we look ahead
+                if x > nedges - 2:
                     raise RuntimeError(BADBLOCK)
-                v |= b1
-                m0 >>= 2
-                m1 >>= 2
-            # Split into fields (val, addr)
+                # width is 444/889 nominal
+                width = ticks_diff(self._times[x + 1], self._times[x])
+                if not 222 < width < 1111:
+                    self.verbose and print('Bad block 3 Width', width, 'x', x)
+                    raise RuntimeError(BADBLOCK)
+                short = width < 666
+                if not short:
+                    bit ^= 1
+                v <<= 1
+                v |= bit
+                bits += 1
+                x += 1 + int(short)
+
+            if self.verbose:
+                 ss = '20-bit format {:020b} x={} nedges={} bits={}'
+                 print(ss.format(v, x, nedges, bits))
+
             val = v & 0xff
             addr = (v >> 8) & 0xff
-
+            ctrl = (v >> 16) & 1
         except RuntimeError as e:
             val, addr, ctrl = e.args[0], 0, 0
         self.edge = 0  # Set up for new data burst and run user callback

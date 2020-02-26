@@ -46,8 +46,8 @@ class Rbutton:
 async def main(proto):
     # Test uses a 38KHz carrier. Some Philips systems use 36KHz.
     # If button is held down normal behaviour is to retransmit
-    # but most NEC models send a RPEAT code
-    rep_code = False  # Don't care for RC-X. NEC protocol only.
+    # but most NEC models send a REPEAT code
+    rep_code = False  # Rbutton constructor requires False for RC-X. NEC protocol only.
     pin = Pin('X1')
     if not proto:
         irb = NEC(pin)  # Default NEC freq == 38KHz
@@ -56,11 +56,11 @@ async def main(proto):
     elif proto == 5:
         irb = RC5(pin, 38000)  # My decoder chip is 38KHz
     elif proto == 6:
-        irb = RC6_M0(pin, 38000, True)  # Verbose
+        irb = RC6_M0(pin, 38000)
 
     b = []  # Rbutton instances
     b.append(Rbutton(irb, Pin('X3', Pin.IN, Pin.PULL_UP), 0x1, 0x7, rep_code))
-    b.append(Rbutton(irb, Pin('X4', Pin.IN, Pin.PULL_UP), 0xfa, 0xb, rep_code))
+    b.append(Rbutton(irb, Pin('X4', Pin.IN, Pin.PULL_UP), 0x10, 0xb, rep_code))
     led = LED(1)
     while True:
         await asyncio.sleep_ms(500)  # Obligatory flashing LED.

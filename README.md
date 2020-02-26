@@ -2,79 +2,123 @@
 
 This repo provides a driver to receive from IR (infra red) remote controls and
 a driver for IR "blaster" apps. The device drivers are nonblocking. They do not
-require `uasyncio` but are entirely compatible with it.
+require `uasyncio` but are compatible with it.
+
+# 1. IR communication
 
 IR communication uses a carrier frequency to pulse the IR source. Modulation
-takes the form of OOK (on-off keying). There are a several mutually
-incompatible protocols and at least two options for carrier frequency, namely
-36KHz and 38KHz.
+takes the form of OOK (on-off keying). There are multiple protocols and at
+least two options for carrier frequency, namely 36KHz and 38KHz.
 
 The drivers support the NEC protocol and two Philips protocols, namely RC-5 and
 RC-6 mode 0. In the case of the transmitter the carrier frequency is a runtime
-parameter so any value may be used. The receiver uses a hardware demodulator
-which must be specified for the correct frequency. The device driver is carrier
-frequency agnostic.
+parameter: any value may be specified. The receiver uses a hardware demodulator
+which must be specified for the correct frequency. The receiver device driver
+sees the demodulated signal and is hence carrier frequency agnostic.
 
-# Hardware Requirements
+Examining waveforms from various remote controls it is evident that numerous
+protocols exist. Some are doubtless proprietary and undocumented. The supported
+protocols are those for which I managed to locate documentation. My preference
+is for the NEC version. It has conservative timing and ample scope for error
+detection. RC-5 has limited error detection, and RC-6 mode 0 has rather fast
+timing: I doubt that detection can be accomplished on targets slower than a
+Pyboard.
+
+A remote using the NEC protocol is [this one](https://www.adafruit.com/products/389).
+
+Remotes normally transmit an address and a data byte. The address denotes the
+physical device being controlled. The data is associated with the button on the
+remote. Provision exists for differentiating between a button repeatedly
+pressed and one which is held down; the mechanism is protocol dependent.
+
+# 2. Hardware Requirements
 
 The receiver is cross-platform. It requires an IR receiver chip to demodulate
-the carrier. There are two options for carrier frequency: 36KHz and 38KHz. The
-chip must be selected for the frequency in use by the remote. 
+the carrier. The chip must be selected for the frequency in use by the remote.
+For 38KHz devices a receiver chip such as the Vishay TSOP4838 or the
+[adafruit one](https://www.adafruit.com/products/157) is required. This
+demodulates the 38KHz IR pulses and passes the demodulated pulse train to the
+microcontroller. The tested chip returns a 0 level on carrier detect, but the
+driver design should ensure operation regardless of sense.
+
+The pin used to connect the decoder chip to the target is arbitrary but the
+test programs assume pin X3 on the Pyboard, pin 13 on the ESP8266 and pin 23 on
+ESP32.
 
 The transmitter requires a Pyboard 1.x (not Lite) or a Pyboard D. Output is via
 an IR LED which will normally need a transistor to provide sufficient current.
+Typically these need 50-100mA of drive to achieve reasonable range and data
+integrity. A suitable LED is [this one](https://www.adafruit.com/product/387).
 
-# Decoder for IR Remote Controls using the NEC protocol
+The transmitter test script assumes pin X1 for IR output. It can be changed,
+but it must support Timer 2 channel 1. Pins for pushbutton inputs are
+arbitrary: X3 and X4 are used.
 
-This protocol is widely used. An example remote is [this one](https://www.adafruit.com/products/389).
-To interface the device a receiver chip such as the Vishay TSOP4838 or the
-[adafruit one](https://www.adafruit.com/products/157) is required. This
-demodulates the 38KHz IR pulses and passes the demodulated pulse train to the
-microcontroller.
+# 3. Installation
 
-The driver and test programs run on the Pyboard and ESP8266.
+On import, demos print an explanation of how to run them.
 
-# Files
+## 3.1 Receiver
 
- 1. `aremote.py` The device driver.
- 2. `art.py` A test program to characterise a remote.
- 3. `art1.py` Control an onboard LED using a remote. The data and addresss
- values need changing to match your characterised remote.
+Copy the following files to the target filesystem:
+ 1. `ir_rx.py` The receiver device driver.
+ 2. `ir_rx_test.py` Demo of a receiver.
 
-# Dependencies
+There are no dependencies.
 
-The driver requires the `uasyncio` library and the file `asyn.py` from this
-repository.
+The demo can be used to characterise IR remotes. It displays the codes returned
+by each button. This can aid in the design of receiver applications. When the
+demo runs, the REPL prompt reappears: this is because it sets up an ISR context
+and returns. Press `ctrl-d` to cancel it. A real application would run code
+after initialising reception so this behaviour would not occur.
 
-# Usage
+## 3.2 Transmitter
 
-The pin used to connect the decoder chip to the target is arbitrary but the
-test programs assume pin X3 on the Pyboard and pin 13 on the ESP8266.
+Copy the following files to the Pyboard filesystem:
+ 1. `ir_tx.py` The transmitter device driver.
+ 2. `ir_tx_test.py` Demo of a 2-button remote controller.
 
-The driver is event driven. Pressing a button on the remote causes a user
-defined callback to be run. The NEC protocol returns a data value and an
-address. These are passed to the callback as the first two arguments (further
-user defined arguments may be supplied). The address is normally constant for a
-given remote, with the data corresponding to the button. Applications should
-check the address to ensure that they only respond to the correct remote.
+The device driver has no dependencies. The test program requires `uasyncio`
+from the official library and `aswitch.py` from
+[this repo](https://github.com/peterhinch/micropython-async).
 
-Data values are 8 bit. Addresses may be 8 or 16 bit depending on whether the
-remote uses extended addressing.
+# 4. Receiver
 
-If a button is held down a repeat code is sent. In this event the driver
-returns a data value of `REPEAT` and the address associated with the last
-valid data block.
+This implements a class for each supported protocol, namely `NEC_IR`, `RC5_IR`
+and `RC6_M0`. Applications should instantiate the appropriate class with a
+callback. The callback will run whenever an IR pulsetrain is received.
 
-To characterise a remote run `art.py` and note the data value for each button
-which is to be used. If the address is less than 256, extended addressing is
-not in use.
+Constructor:  
+`NEC_IR` args: `pin`, `callback`, `extended=True`, `*args`  
+`RC5_IR` and `RC6_M0`: args `pin`, `callback`, `*args`  
+Args:  
+ 1. `pin` is a `machine.Pin` instance configured as an input, connected to the
+ IR decoder chip.  
+ 2. `callback` is the user supplied callback (see below).
+ 3. `extended` is an NEC specific boolean. Remotes using the NEC protocol can
+ send 8 or 16 bit addresses. If `True` 16 bit addresses are assumed - an 8 bit
+ address will be correctly received. Set `False` to enable extra error checking
+ for remotes that return an 8 bit address.
+ 4. `*args` Any further args will be passed to the callback.  
 
-# Reliability
+The callback takes the following args:  
+ 1. `data` Integer value fom the remote. A negative value indicates an error
+ except for the value of -1 which signifies an NEC repeat code (see below).
+ 2. `addr` Address from the remote
+ 3. `ctrl` 0 in the case of NEC. Philips protocols toggle this bit on repeat
+ button presses. If the button is held down the bit is not toggled. The
+ transmitter demo implements this behaviour.
+ 4. Any args passed to the constructor.
+
+Class variable:  
+ 1. `verbose=False` If `True` emits debug output.
+
+# 4.1 Errors
 
 IR reception is inevitably subject to errors, notably if the remote is operated
 near the limit of its range, if it is not pointed at the receiver or if its
 batteries are low. So applications must check for, and usually ignore, errors.
-These are flagged by data values < `REPEAT`.
+These are flagged by data values < `REPEAT` (-1).
 
 On the ESP8266 there is a further source of errors. This results from the large
 and variable interrupt latency of the device which can exceed the pulse
@@ -82,33 +126,133 @@ duration. This causes pulses to be missed. This tendency is slightly reduced by
 running the chip at 160MHz.
 
 In general applications should provide user feedback of correct reception.
-Users tend to press the key again if no acknowledgement is received.
+Users tend to press the key again if the expected action is absent.
 
-# The NEC_IR class
+Data values passed to the callback are normally positive. Negative values
+indicate a repeat code or an error.
 
-The constructor takes the following positional arguments.
+`REPEAT` A repeat code was received.
 
- 1. `pin` A `Pin` instance for the decoder chip.
- 2. `cb` The user callback function.
- 3. `extended` Set `False` to enable extra error checking if the remote
- returns an 8 bit address.
- 4. Further arguments, if provided, are passed to the callback.
+Any data value < `REPEAT` denotes an error. In general applications do not
+need to decode these, but they may be of use in debugging. For completeness
+they are listed below.
 
-The callback receives the following positional arguments:
+`BADSTART` A short (<= 4ms) start pulse was received. May occur due to IR
+interference, e.g. from fluorescent lights. The TSOP4838 is prone to producing
+200µs pulses on occasion, especially when using the ESP8266.  
+`BADBLOCK` A normal data block: too few edges received. Occurs on the ESP8266
+owing to high interrupt latency.  
+`BADREP` A repeat block: an incorrect number of edges were received.  
+`OVERRUN` A normal data block: too many edges received.  
+`BADDATA` Data did not match check byte.  
+`BADADDR` Where `extended` is `False` the 8-bit address is checked
+against the check byte. This code is returned on failure.  
 
- 1. The data value returned from the remote.
- 2. The address value returned from the remote.
- 3. Any further arguments provided to the `NEC_IR` constructor.
+# 4.2 Receiver platforms
 
-Negative data values are used to signal repeat codes and transmission errors.
+The NEC protocol has been tested against Pyboard, ESP8266 and ESP32 targets.
+The Philips protocols - especially RC-6 - have tighter timing constraints. I
+have not yet tested these, but I anticipate problems.
 
-The test program `art1.py` provides an example of a minimal application.
+# 4.3 Principle of operation
 
-# How it works
+Protocol classes inherit from the abstract base class `IR_RX`. This uses a pin
+interrupt to store in an array the start and end times of pulses (in μs).
+Arrival of the first pulse triggers a software timer which runs for the
+expected duration of an IR block (`tblock`). When it times out its callback
+(`.decode`) decodes the data and calls the user callback. The use of a software
+timer ensures that `.decode` and the user callback can allocate.
 
-The NEC protocol is described in these references.  
+The size of the array and the duration of the timer are protocol dependent and
+are set by the subclasses. The `.decode` method is provided in the subclass.
+
+CPU times used by `.decode` (not including the user callback) were measured on
+a Pyboard D SF2W at stock frequency. They were NEC 1ms for normal data, 100μs
+for a repeat code. Philips codes: RC-5 900μs, RC-6 mode 0 5.5ms.
+
+# 5 Transmitter
+
+This is specific to Pyboard D and Pyboard 1.x (not Lite).
+
+It implements a class for each supported protocol, namely `NEC`, `RC5` and
+`RC6_M0`. The application instantiates the appropriate class and calls the
+`transmit` method to send data.
+
+Constructor  
+All constructors take the following args:  
+ 1. `pin` An initialised `pyb.Pin` instance supporting Timer 2 channel 1: `X1`
+ is employed by the test script. Must be connected to the IR diode as described
+ below.
+ 2. `freq=default` The carrier frequency in Hz. The default for NEC is 38000,
+ and for Philips is 36000.
+ 3. `verbose=False` If `True` emits debug output.
+
+Method:
+ 1. `transmit(addr, data, toggle=0)` Integer args. `addr` and `data` are
+ normally 8-bit values and `toggle` is 0 or 1.  
+ In the case of NEC, if an address < 256 is passed, normal mode is assumed and
+ the complementary value is appended. 16-bit values are transmitted as extended
+ addresses.  
+ In the case of NEC the `toggle` value is ignored. For Philips protocols it
+ should be toggled each time a button is pressed, and retained if the button is
+ held down. The test program illustrates a way to do this.
+
+The `transmit` method is synchronous with rapid return. Actual transmission
+occurs as a background process, controlled by timers 2 and 5. Execution times
+on a Pyboard 1.1 were 3.3ms for NEC, 1.5ms for RC5 and 2ms for RC6.
+
+# 5.1 Wiring
+
+I use the following circuit which delivers just under 40mA to the diode. R2 may
+be reduced for higher current.  
+![Image](images/circuit.png)
+
+This alternative delivers a constant current of about 53mA if a higher voltage
+than 5V is available. R4 determines the current value and may be reduced to
+increase power.  
+![Image](images/circuit2.png)
+
+The transistor type is not critical.
+
+These circuits assume circuits as shown. Here the carrier "off" state is 0V,
+which is the driver default. If using a circuit where "off" is required to be
+3.3V, the constant `_SPACE` in `ir_tx.py` should be changed to 100.
+
+# 5.2 Principle of operation
+
+The classes inherit from the abstract base class `IR`. This has an array `.arr`
+to contain the duration (in μs) of each carrier on or off period. The
+`transmit` method calls a `tx` method in the subclass which populates this
+array. On completion `transmit` appends a special `STOP` value and initiates
+physical transmission which occurs in an interrupt context.
+
+This is performed by two hardware timers initiated in the constructor. Timer 2,
+channel 1 is used to configure the output pin as a PWM channel. Its frequency
+is set in the constructor. The OOK is performed by dynamically changing the
+duty ratio using the timer channel's `pulse_width_percent` method: this varies
+the pulse width from 0 to a duty ratio passed to the constructor. The NEC
+protocol defaults to 50%, the Philips ones to 30%.
+
+The duty ratio is changed by the Timer 5 callback `._cb`. This retrieves the
+next duration from the array. If it is not `STOP` it toggles the duty cycle
+and re-initialises T5 for the new duration.
+
+The `IR.append` enables times to be added to the array, keeping track of the
+notional carrier on/off state for biphase generation. The `IR.add` method
+facilitates lengthening a pulse as required in the biphase sequences used in
+Philips protocols.
+
+# 6. References
+
+The NEC protocol is described in these references:  
 [altium](http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol)  
 [circuitvalley](http://www.circuitvalley.com/2013/09/nec-protocol-ir-infrared-remote-control.html)
+
+The Philips protocols may be found in these refs:  
+[RC5](https://en.wikipedia.org/wiki/RC-5)  
+[RC6](https://www.sbprojects.net/knowledge/ir/rc6.php)
+
+# Appendix 1 NEC Protocol description
 
 A normal burst comprises exactly 68 edges, the exception being a repeat code
 which has 4. An incorrect number of edges is treated as an error. All bursts
@@ -135,25 +279,3 @@ any asyncio latency when setting its delay period.
 The algorithm promotes interrupt handler speed over RAM use: the 276 bytes used
 for the data array could be reduced to 69 bytes by computing and saving deltas
 in the interrupt service routine.
-
-# Error returns
-
-Data values passed to the callback are normally positive. Negative values
-indicate a repeat code or an error.
-
-`REPEAT` A repeat code was received.
-
-Any data value < `REPEAT` denotes an error. In general applications do not
-need to decode these, but they may be of use in debugging. For completeness
-they are listed below.
-
-`BADSTART` A short (<= 4ms) start pulse was received. May occur due to IR
-interference, e.g. from fluorescent lights. The TSOP4838 is prone to producing
-200µs pulses on occasion, especially when using the ESP8266.  
-`BADBLOCK` A normal data block: too few edges received. Occurs on the ESP8266
-owing to high interrupt latency.  
-`BADREP` A repeat block: an incorrect number of edges were received.  
-`OVERRUN` A normal data block: too many edges received.  
-`BADDATA` Data did not match check byte.  
-`BADADDR` Where `extended` is `False` the 8-bit address is checked
-against the check byte. This code is returned on failure.  

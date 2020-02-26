@@ -6,7 +6,6 @@
 # Copyright (c) 2020 Peter Hinch
 
 from pyb import Pin, Timer
-from time import sleep_us, sleep
 from micropython import const
 from array import array
 import micropython
@@ -27,18 +26,16 @@ _T2_RC6 = const(889)
 
 # IR abstract base class. Array holds periods in μs between toggling 36/38KHz
 # carrier on or off. Physical transmission occurs in an ISR context controlled
-# by timer 2 and timer 5.
-# Operation is in two phases: .transmit populates .arr with times in μs (via
-# subclass), then initiates physical transmission.
+# by timer 2 and timer 5. See README.md for details of operation.
 class IR:
 
     def __init__(self, pin, freq, asize, duty, verbose):
         tim = Timer(2, freq=freq)  # Timer 2/pin produces 36/38KHz carrier
         self._ch = tim.channel(1, Timer.PWM, pin=pin)
         self._ch.pulse_width_percent(_SPACE)  # Turn off IR LED
-        self._duty = duty
+        self._duty = duty if not _SPACE else (100 - duty)
         self._tim = Timer(5)  # Timer 5 controls carrier on/off times
-        self._tcb = self._cb
+        self._tcb = self.cb  # Pre-allocate
         self.verbose = verbose
         self.arr = array('H', 0 for _ in range(asize))  # on/off times (μs)
         self.carrier = False  # Notional carrier state while encoding biphase
@@ -51,9 +48,9 @@ class IR:
         self.tx(addr, data, toggle)
         self.append(_STOP)
         self.aptr = 0  # Reset pointer
-        self._cb(self._tim)  # Initiate physical transmission.
+        self.cb(self._tim)  # Initiate physical transmission.
 
-    def _cb(self, t):  # T5 callback, generate a carrier mark or space
+    def cb(self, t):  # T5 callback, generate a carrier mark or space
         t.deinit()
         p = self.aptr
         v = self.arr[p]
@@ -88,18 +85,20 @@ class NEC(IR):
         self.append(9000, 4500)
         if addr < 256:  # Short address: append complement
             addr |= ((addr ^ 0xff) << 8)
-        for x in range(16):
+        for _ in range(16):
             self._bit(addr & 1)
             addr >>= 1
         data |= ((data ^ 0xff) << 8)
-        for x in range(16):
+        for _ in range(16):
             self._bit(data & 1)
             data >>= 1
-        self.append(_TBURST,)
+        self.append(_TBURST)
 
     def repeat(self):
         self.aptr = 0
-        self.append(9000, 2250, _TBURST)
+        self.append(9000, 2250, _TBURST, _STOP)
+        self.aptr = 0  # Reset pointer
+        self.cb(self._tim)  # Initiate physical transmission.
 
 
 # Philips RC5 protocol

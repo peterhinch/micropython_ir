@@ -46,11 +46,12 @@ print(s)
 
 def test(proto=0):
     if proto == 0:
-        ir = NEC_IR(p, cb, True, 0)  # Extended mode, dummy ctrl arg for callback
+        ir = NEC_IR(p, cb)  # Extended mode
     elif proto == 5:
         ir = RC5_IR(p, cb)
     elif proto == 6:
         ir = RC6_M0(p, cb)
+        ir.verbose = True
     # A real application would do something here...
     #while True:
         #time.sleep(5)
