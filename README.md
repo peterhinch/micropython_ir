@@ -238,7 +238,7 @@ increase power.
 
 The transistor type is not critical.
 
-These circuits assume circuits as shown. Here the carrier "off" state is 0V,
+The driver assumes circuits as shown. Here the carrier "off" state is 0V,
 which is the driver default. If using a circuit where "off" is required to be
 3.3V, the constant `_SPACE` in `ir_tx.py` should be changed to 100.
 
@@ -255,7 +255,7 @@ channel 1 is used to configure the output pin as a PWM channel. Its frequency
 is set in the constructor. The OOK is performed by dynamically changing the
 duty ratio using the timer channel's `pulse_width_percent` method: this varies
 the pulse width from 0 to a duty ratio passed to the constructor. The NEC
-protocol defaults to 50%, the Philips ones to 30%.
+protocol defaults to 50%, the Sony and Philips ones to 30%.
 
 The duty ratio is changed by the Timer 5 callback `._cb`. This retrieves the
 next duration from the array. If it is not `STOP` it toggles the duty cycle
