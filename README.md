@@ -252,6 +252,9 @@ The Philips protocols may be found in these refs:
 [RC5](https://en.wikipedia.org/wiki/RC-5)  
 [RC6](https://www.sbprojects.net/knowledge/ir/rc6.php)
 
+Sony protocol (future use):  
+[SIRC](https://www.sbprojects.net/knowledge/ir/sirc.php)
+
 # Appendix 1 NEC Protocol description
 
 A normal burst comprises exactly 68 edges, the exception being a repeat code
