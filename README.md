@@ -269,15 +269,17 @@ Philips protocols.
 
 # 6. References
 
-The NEC protocol is described in these references:  
+[General information about IR](https://www.sbprojects.net/knowledge/ir/)
+
+The NEC protocol:  
 [altium](http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol)  
 [circuitvalley](http://www.circuitvalley.com/2013/09/nec-protocol-ir-infrared-remote-control.html)
 
-The Philips protocols may be found in these refs:  
+Philips protocols:  
 [RC5](https://en.wikipedia.org/wiki/RC-5)  
 [RC6](https://www.sbprojects.net/knowledge/ir/rc6.php)
 
-Sony protocol (future use):  
+Sony protocol:  
 [SIRC](https://www.sbprojects.net/knowledge/ir/sirc.php)
 
 # Appendix 1 NEC Protocol description
