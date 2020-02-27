@@ -115,6 +115,58 @@ class NEC_IR(IR_RX):
         self.edge = 0  # Set up for new data burst and run user callback
         self.callback(cmd, addr, 0, *self.args)
 
+
+class SONY_IR(IR_RX):
+    def __init__(self, pin, callback, bits=20, *args):
+        # 20 bit block has 42 edges and lasts <= 39ms nominal. Add 4ms to time
+        # for tolerances except in 20 bit case where timing is tight with a
+        # repeat period of 45ms.
+        t = int(3 + bits * 1.8) + (1 if bits == 20 else 4)
+        super().__init__(pin, 2 + bits * 2, t, callback, *args)
+        self._addr = 0
+        self._bits = bits
+
+    def decode(self, _):
+        try:
+            nedges = self.edge  # No. of edges detected
+            print(nedges)
+            if nedges > 42:
+                raise RuntimeError(OVERRUN)
+            bits = (nedges - 2) // 2
+            if nedges not in (26, 32, 42) or bits > self._bits:
+                raise RuntimeError(BADBLOCK)
+            self.verbose and print('SIRC {}bit'.format(bits))
+            width = ticks_diff(self._times[1], self._times[0])
+            if not 1800 < width < 3000:  # 2.4ms leading mark for all valid data
+                raise RuntimeError(BADSTART)
+            width = ticks_diff(self._times[2], self._times[1])
+            if not 350 < width < 1000:  # 600μs space
+                raise RuntimeError(BADSTART)
+
+            val = 0  # Data received, LSB 1st
+            x = 2
+            bit = 1
+            while x < nedges - 2:
+                if ticks_diff(self._times[x + 1], self._times[x]) > 900:
+                    val |= bit
+                bit <<= 1
+                x += 2
+
+            cmd = val & 0x7f  # 7 bit command
+            val >>= 7
+            if nedges < 42:
+                addr = val & 0xff  # 5 or 8 bit addr
+                val = 0
+            else:
+                addr = val & 0x1f  # 5 bit addr
+                val >>= 5  # 8 bit extended
+        except RuntimeError as e:
+            cmd = e.args[0]
+            addr = 0
+            val = 0
+        self.edge = 0  # Set up for new data burst and run user callback
+        self.callback(cmd, addr, val, *self.args)
+
 class RC5_IR(IR_RX):
     def __init__(self, pin, callback, *args):
         # Block lasts <= 30ms and has <= 28 edges

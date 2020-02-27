@@ -8,13 +8,14 @@ require `uasyncio` but are compatible with it.
 
 IR communication uses a carrier frequency to pulse the IR source. Modulation
 takes the form of OOK (on-off keying). There are multiple protocols and at
-least two options for carrier frequency, namely 36KHz and 38KHz.
+least three options for carrier frequency, namely 36KHz, 38KHz and 40KHz.
 
-The drivers support the NEC protocol and two Philips protocols, namely RC-5 and
-RC-6 mode 0. In the case of the transmitter the carrier frequency is a runtime
-parameter: any value may be specified. The receiver uses a hardware demodulator
-which must be specified for the correct frequency. The receiver device driver
-sees the demodulated signal and is hence carrier frequency agnostic.
+The drivers support NEC and Sony protocols and two Philips protocols, namely
+RC-5 and RC-6 mode 0. In the case of the transmitter the carrier frequency is a
+runtime parameter: any value may be specified. The receiver uses a hardware
+demodulator which should be specified for the correct frequency. The receiver
+device driver sees the demodulated signal and is hence carrier frequency
+agnostic.
 
 Examining waveforms from various remote controls it is evident that numerous
 protocols exist. Some are doubtless proprietary and undocumented. The supported
@@ -40,6 +41,9 @@ For 38KHz devices a receiver chip such as the Vishay TSOP4838 or the
 demodulates the 38KHz IR pulses and passes the demodulated pulse train to the
 microcontroller. The tested chip returns a 0 level on carrier detect, but the
 driver design should ensure operation regardless of sense.
+
+In my testing a 38KHz demodulator worked with 36KHz and 40KHz remotes, but this
+is obviously not guaranteed or optimal.
 
 The pin used to connect the decoder chip to the target is arbitrary but the
 test programs assume pin X3 on the Pyboard, pin 13 on the ESP8266 and pin 23 on
@@ -84,22 +88,32 @@ from the official library and `aswitch.py` from
 
 # 4. Receiver
 
-This implements a class for each supported protocol, namely `NEC_IR`, `RC5_IR`
-and `RC6_M0`. Applications should instantiate the appropriate class with a
-callback. The callback will run whenever an IR pulsetrain is received.
+This implements a class for each supported protocol, namely `NEC_IR`,
+`SONY_IR`, `RC5_IR` and `RC6_M0`. Applications should instantiate the
+appropriate class with a callback. The callback will run whenever an IR pulse
+train is received.
 
 Constructor:  
 `NEC_IR` args: `pin`, `callback`, `extended=True`, `*args`  
+`SONY_IR` args: `pin`, `callback`, `bits=20`, `*args`  
 `RC5_IR` and `RC6_M0`: args `pin`, `callback`, `*args`  
-Args:  
+
+Args (all protocols):  
  1. `pin` is a `machine.Pin` instance configured as an input, connected to the
  IR decoder chip.  
  2. `callback` is the user supplied callback (see below).
- 3. `extended` is an NEC specific boolean. Remotes using the NEC protocol can
+ 4. `*args` Any further args will be passed to the callback.  
+
+Protocol specific args:
+ 1. `extended` is an NEC specific boolean. Remotes using the NEC protocol can
  send 8 or 16 bit addresses. If `True` 16 bit addresses are assumed - an 8 bit
  address will be correctly received. Set `False` to enable extra error checking
  for remotes that return an 8 bit address.
- 4. `*args` Any further args will be passed to the callback.  
+ 2. `bits=20` Sony specific. The SIRC protocol comes in 3 variants: 12, 15 and
+ 20 bits. The default will handle bitstreams from all three types of remote.
+ Choosing a value matching your remote improves the timing and reduces the
+ likelihood of errors when handling repeats: the SIRC timing when a button is
+ held down is tight in 20 bit mode.
 
 The callback takes the following args:  
  1. `data` Integer value fom the remote. A negative value indicates an error
@@ -174,8 +188,8 @@ for a repeat code. Philips codes: RC-5 900μs, RC-6 mode 0 5.5ms.
 
 This is specific to Pyboard D and Pyboard 1.x (not Lite).
 
-It implements a class for each supported protocol, namely `NEC`, `RC5` and
-`RC6_M0`. The application instantiates the appropriate class and calls the
+It implements a class for each supported protocol, namely `NEC`, `SONY`, `RC5`
+and `RC6_M0`. The application instantiates the appropriate class and calls the
 `transmit` method to send data.
 
 Constructor  
@@ -184,18 +198,29 @@ All constructors take the following args:
  is employed by the test script. Must be connected to the IR diode as described
  below.
  2. `freq=default` The carrier frequency in Hz. The default for NEC is 38000,
- and for Philips is 36000.
+ Sony is 40000 and Philips is 36000.
  3. `verbose=False` If `True` emits debug output.
+
+The `SONY` constructor is of form `pin, bits=12, freq=40000, verbose=False`.
+The `bits` value may be 12, 15 or 20 to set the highest SIRC variant in use.
+Other args are as above. If `bits` is set to 20 then all variants will be
+received. Setting the value to the maximum expected improves error checking and
+timing tolerances. In particular a worst-case 20-bit block takes 39ms nominal,
+yet the repeat time is 45ms nominal.
+
+The Sony remote tested issues both 12 bit and 15 bit streams.
 
 Method:
  1. `transmit(addr, data, toggle=0)` Integer args. `addr` and `data` are
- normally 8-bit values and `toggle` is 0 or 1.  
+ normally 8-bit values and `toggle` is normally 0 or 1.  
  In the case of NEC, if an address < 256 is passed, normal mode is assumed and
  the complementary value is appended. 16-bit values are transmitted as extended
  addresses.  
  In the case of NEC the `toggle` value is ignored. For Philips protocols it
  should be toggled each time a button is pressed, and retained if the button is
- held down. The test program illustrates a way to do this.
+ held down. The test program illustrates a way to do this.  
+ `SONY` ignores `toggle` unless in 20-bit mode, in which case it is transmitted
+ as the `extended` value and can be any integer in range 0 to 255.
 
 The `transmit` method is synchronous with rapid return. Actual transmission
 occurs as a background process, controlled by timers 2 and 5. Execution times
@@ -222,7 +247,7 @@ which is the driver default. If using a circuit where "off" is required to be
 
 The classes inherit from the abstract base class `IR`. This has an array `.arr`
 to contain the duration (in μs) of each carrier on or off period. The
-`transmit` method calls a `tx` method in the subclass which populates this
+`transmit` method calls a `tx` method of the subclass which populates this
 array. On completion `transmit` appends a special `STOP` value and initiates
 physical transmission which occurs in an interrupt context.
 

@@ -1,15 +1,15 @@
-# ir_tx_test.py Test for nonblocking NEC/RC-5/RC-6 mode 0 IR blaster.
+# ir_tx_test.py Test for nonblocking NEC/SONY/RC-5/RC-6 mode 0 IR blaster.
 
 # Released under the MIT License (MIT). See LICENSE.
 
 # Copyright (c) 2020 Peter Hinch
 
-# Implements a 2-button remote control on a Pyboard
+# Implements a 2-button remote control on a Pyboard with auto repeat.
 
 from pyb import Pin, LED
 import uasyncio as asyncio
 from aswitch import Switch, Delay_ms
-from ir_tx import NEC, RC5, RC6_M0
+from ir_tx import NEC, SONY, RC5, RC6_M0
 
 loop = asyncio.get_event_loop()
 
@@ -27,7 +27,8 @@ class Rbutton:
 
     def cfunc(self):  # Button push: send data
         self.irb.transmit(self.addr, self.data, Rbutton.toggle)
-        # Auto repeat
+        # Auto repeat. The Sony protocol specifies 45ms but this is tight.
+        # In 20 bit mode a data burst can be upto 39ms long.
         self.tim.trigger(108)
 
     def ofunc(self):  # Button release: cancel repeat timer
@@ -53,6 +54,9 @@ async def main(proto):
         irb = NEC(pin)  # Default NEC freq == 38KHz
         # Option to send REPEAT code. Most remotes do this.
         rep_code = True
+    elif proto < 4:
+        bits = (12, 15, 20)[proto - 1]
+        irb = SONY(pin, bits, 38000)  # My decoder chip is 38KHz
     elif proto == 5:
         irb = RC5(pin, 38000)  # My decoder chip is 38KHz
     elif proto == 6:
@@ -67,9 +71,13 @@ async def main(proto):
         led.toggle()
 
 s = '''Test for IR transmitter. Run:
-ir_tx_test.test() for NEC protocol
-ir_tx_test.test(5) for RC-5 protocol
-ir_tx_test.test(6) for RC-6 mode 0.
+from ir_tx_test import test
+test() for NEC protocol
+test(1) for Sony SIRC 12 bit
+test(2) for Sony SIRC 15 bit
+test(3) for Sony SIRC 20 bit
+test(5) for Philips RC-5 protocol
+test(6) for Philips RC-6 mode 0.
 
 Ground X3 to send addr 1 data 7
 Ground X4 to send addr 0x10 data 0x0b.'''

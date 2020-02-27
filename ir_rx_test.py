@@ -31,13 +31,17 @@ def cb(data, addr, ctrl):
     elif data >= 0:
         print('Data {:03x} Addr {:03x} Ctrl {:01x}'.format(data, addr, ctrl))
     else:
-        print('{} Address: {}'.format(errors[data], hex(addr)))
+        print(errors[data])  # Application would ignore errors
 
 
 s = '''Test for IR receiver. Run:
-ir_tx_test.test() for NEC protocol,
-ir_tx_test.test(5) for Philips RC-5 protocol,
-ir_tx_test.test(6) for RC6 mode 0.
+from ir_rx_test import test
+test() for NEC protocol,
+test(1) for Sony SIRC 12 bit,
+test(2) for Sony SIRC 15 bit,
+test(3) for Sony SIRC 20 bit,
+test(5) for Philips RC-5 protocol,
+test(6) for RC6 mode 0.
 
 Background processing means REPL prompt reappears.
 Hit ctrl-D to stop (soft reset).'''
@@ -47,6 +51,10 @@ print(s)
 def test(proto=0):
     if proto == 0:
         ir = NEC_IR(p, cb)  # Extended mode
+    elif proto < 4:
+        bits = (12, 15, 20)[proto - 1]
+        ir = SONY_IR(p, cb, bits)
+        ir.verbose = True
     elif proto == 5:
         ir = RC5_IR(p, cb)
     elif proto == 6:
