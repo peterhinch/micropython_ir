@@ -110,10 +110,12 @@ Protocol specific args:
  address will be correctly received. Set `False` to enable extra error checking
  for remotes that return an 8 bit address.
  2. `bits=20` Sony specific. The SIRC protocol comes in 3 variants: 12, 15 and
- 20 bits. The default will handle bitstreams from all three types of remote.
- Choosing a value matching your remote improves the timing and reduces the
- likelihood of errors when handling repeats: the SIRC timing when a button is
- held down is tight in 20 bit mode.
+ 20 bits. The default will handle bitstreams from all three types of remote. A
+ value matching your remote improves the timing and reduces the  likelihood of
+ errors when handling repeats: in 20-bit mode SIRC timing when a button is held
+ down is tight. A worst-case 20-bit block takes 39ms nominal, yet the repeat
+ time is 45ms nominal.  
+ The Sony remote tested issues both 12 bit and 15 bit streams.
 
 The callback takes the following args:  
  1. `data` Integer value fom the remote. A negative value indicates an error
@@ -121,7 +123,9 @@ The callback takes the following args:
  2. `addr` Address from the remote
  3. `ctrl` 0 in the case of NEC. Philips protocols toggle this bit on repeat
  button presses. If the button is held down the bit is not toggled. The
- transmitter demo implements this behaviour.
+ transmitter demo implements this behaviour.  
+ In the case of Sony the value will be 0 unless receiving a 20-bit stream, in
+ which case it will hold the extended value.
  4. Any args passed to the constructor.
 
 Class variable:  
@@ -202,13 +206,8 @@ All constructors take the following args:
  3. `verbose=False` If `True` emits debug output.
 
 The `SONY` constructor is of form `pin, bits=12, freq=40000, verbose=False`.
-The `bits` value may be 12, 15 or 20 to set the highest SIRC variant in use.
-Other args are as above. If `bits` is set to 20 then all variants will be
-received. Setting the value to the maximum expected improves error checking and
-timing tolerances. In particular a worst-case 20-bit block takes 39ms nominal,
-yet the repeat time is 45ms nominal.
-
-The Sony remote tested issues both 12 bit and 15 bit streams.
+The `bits` value may be 12, 15 or 20 to set SIRC variant in use. Other args are
+as above.
 
 Method:
  1. `transmit(addr, data, toggle=0)` Integer args. `addr` and `data` are
