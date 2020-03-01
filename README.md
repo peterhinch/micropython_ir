@@ -4,6 +4,11 @@ This repo provides a driver to receive from IR (infra red) remote controls and
 a driver for IR "blaster" apps. The device drivers are nonblocking. They do not
 require `uasyncio` but are compatible with it.
 
+NOTE: The receiver is intended to be cross-platform. In testing it has proved
+problematic on ESP8266 and ESP32 with a tendency to crash and reboot,
+especially when repeated pulse trains re received. The cause is under
+investigation.
+
 # 1. IR communication
 
 IR communication uses a carrier frequency to pulse the IR source. Modulation
@@ -27,10 +32,11 @@ Pyboard.
 
 A remote using the NEC protocol is [this one](https://www.adafruit.com/products/389).
 
-Remotes normally transmit an address and a data byte. The address denotes the
-physical device being controlled. The data is associated with the button on the
-remote. Provision exists for differentiating between a button repeatedly
-pressed and one which is held down; the mechanism is protocol dependent.
+Remotes transmit an address and a data byte, plus in some cases an extra value.
+The address denotes the physical device being controlled. The data defines the
+button on the remote. Provision usually exists for differentiating between a
+button repeatedly pressed and one which is held down; the mechanism is protocol
+dependent.
 
 # 2. Hardware Requirements
 
@@ -40,14 +46,14 @@ For 38KHz devices a receiver chip such as the Vishay TSOP4838 or the
 [adafruit one](https://www.adafruit.com/products/157) is required. This
 demodulates the 38KHz IR pulses and passes the demodulated pulse train to the
 microcontroller. The tested chip returns a 0 level on carrier detect, but the
-driver design should ensure operation regardless of sense.
+driver design ensures operation regardless of sense.
 
 In my testing a 38KHz demodulator worked with 36KHz and 40KHz remotes, but this
 is obviously not guaranteed or optimal.
 
-The pin used to connect the decoder chip to the target is arbitrary but the
-test programs assume pin X3 on the Pyboard, pin 13 on the ESP8266 and pin 23 on
-ESP32.
+The pin used to connect the decoder chip to the target is arbitrary. The test
+program assumes pin X3 on the Pyboard, pin 23 on ESP32 and pin 13 on ESP8266.
+On the WeMos D1 Mini the equivalent pin is D7.
 
 The transmitter requires a Pyboard 1.x (not Lite) or a Pyboard D. Output is via
 an IR LED which will normally need a transistor to provide sufficient current.
@@ -146,7 +152,7 @@ running the chip at 160MHz.
 In general applications should provide user feedback of correct reception.
 Users tend to press the key again if the expected action is absent.
 
-Data values passed to the callback are normally positive. Negative values
+Data values passed to the callback are zero or positive. Negative values
 indicate a repeat code or an error.
 
 `REPEAT` A repeat code was received.
