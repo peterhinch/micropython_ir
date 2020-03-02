@@ -8,6 +8,7 @@
 
 from sys import platform
 import time
+import gc
 from machine import Pin, freq
 from ir_rx import *
 
@@ -19,7 +20,7 @@ elif platform == 'esp8266':
     freq(160000000)
     p = Pin(13, Pin.IN)
 elif ESP32:
-    p = Pin(23, Pin.IN)
+    p = Pin(23, Pin.IN)  # was 27
 
 errors = {BADSTART : 'Invalid start pulse', BADBLOCK : 'Error: bad block',
           BADREP : 'Error: repeat', OVERRUN : 'Error: overrun',
@@ -43,8 +44,7 @@ test(3) for Sony SIRC 20 bit,
 test(5) for Philips RC-5 protocol,
 test(6) for RC6 mode 0.
 
-Background processing means REPL prompt reappears.
-Hit ctrl-D to stop (soft reset).'''
+Hit ctrl-c to stop, then ctrl-d to soft reset.'''
 
 print(s)
 
@@ -54,13 +54,13 @@ def test(proto=0):
     elif proto < 4:
         bits = (12, 15, 20)[proto - 1]
         ir = SONY_IR(p, cb, bits)
-        ir.verbose = True
+        #ir.verbose = True
     elif proto == 5:
         ir = RC5_IR(p, cb)
     elif proto == 6:
         ir = RC6_M0(p, cb)
-        ir.verbose = True
     # A real application would do something here...
-    #while True:
-        #time.sleep(5)
-        #print('running')
+    while True:
+        print('running')
+        time.sleep(5)
+        gc.collect()

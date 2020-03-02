@@ -5,9 +5,9 @@ a driver for IR "blaster" apps. The device drivers are nonblocking. They do not
 require `uasyncio` but are compatible with it.
 
 NOTE: The receiver is intended to be cross-platform. In testing it has proved
-problematic on ESP8266 and ESP32 with a tendency to crash and reboot,
-especially when repeated pulse trains re received. The cause is under
-investigation.
+problematic on ESP8266. The cause is
+[this firmware issue](https://github.com/micropython/micropython/issues/5714)
+which should be fixed in due course.
 
 # 1. IR communication
 
@@ -49,7 +49,7 @@ microcontroller. The tested chip returns a 0 level on carrier detect, but the
 driver design ensures operation regardless of sense.
 
 In my testing a 38KHz demodulator worked with 36KHz and 40KHz remotes, but this
-is obviously not guaranteed or optimal.
+is obviously neither guaranteed nor optimal.
 
 The pin used to connect the decoder chip to the target is arbitrary. The test
 program assumes pin X3 on the Pyboard, pin 23 on ESP32 and pin 13 on ESP8266.
@@ -77,10 +77,8 @@ Copy the following files to the target filesystem:
 There are no dependencies.
 
 The demo can be used to characterise IR remotes. It displays the codes returned
-by each button. This can aid in the design of receiver applications. When the
-demo runs, the REPL prompt reappears: this is because it sets up an ISR context
-and returns. Press `ctrl-d` to cancel it. A real application would run code
-after initialising reception so this behaviour would not occur.
+by each button. This can aid in the design of receiver applications. The demo
+prints "running" every 5 seconds and reports any data received from the remote.
 
 ## 3.2 Transmitter
 
@@ -120,7 +118,7 @@ Protocol specific args:
  value matching your remote improves the timing and reduces the  likelihood of
  errors when handling repeats: in 20-bit mode SIRC timing when a button is held
  down is tight. A worst-case 20-bit block takes 39ms nominal, yet the repeat
- time is 45ms nominal.  
+ time is 45ms nominal. On ESP32 20-bit mode did not work well.  
  The Sony remote tested issues both 12 bit and 15 bit streams.
 
 The callback takes the following args:  
@@ -175,8 +173,14 @@ against the check byte. This code is returned on failure.
 # 4.2 Receiver platforms
 
 The NEC protocol has been tested against Pyboard, ESP8266 and ESP32 targets.
-The Philips protocols - especially RC-6 - have tighter timing constraints. I
-have not yet tested these, but I anticipate problems.
+The Philips protocols - especially RC-6 - have tighter timing constraints.
+Currently the ESP8266 suffers from [this issue](https://github.com/micropython/micropython/issues/5714)
+which prevented testing.
+
+All modes work on the Pyboard. On ESP32 NEC mode works. Sony works for lengths
+of 12 and 15 bits, but 20 bit mode was not reliable owing to the rate at which
+repeats are transmitted. Philips RC-5 worked, with some "bad block" messages.
+Work is ongoing to characterise ESP32 and ESP8266.
 
 # 4.3 Principle of operation
 
@@ -191,7 +195,7 @@ The size of the array and the duration of the timer are protocol dependent and
 are set by the subclasses. The `.decode` method is provided in the subclass.
 
 CPU times used by `.decode` (not including the user callback) were measured on
-a Pyboard D SF2W at stock frequency. They were NEC 1ms for normal data, 100μs
+a Pyboard D SF2W at stock frequency. They were: NEC 1ms for normal data, 100μs
 for a repeat code. Philips codes: RC-5 900μs, RC-6 mode 0 5.5ms.
 
 # 5 Transmitter

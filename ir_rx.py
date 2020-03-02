@@ -49,11 +49,12 @@ class IR_RX():
 
         self._times = array('i',  (0 for _ in range(nedges + 1)))  # +1 for overrun
         if platform == 'pyboard':
-            ExtInt(pin, ExtInt.IRQ_RISING_FALLING, Pin.PULL_NONE, self._cb_pin)
+            ei = ExtInt(pin, ExtInt.IRQ_RISING_FALLING, Pin.PULL_NONE, self._cb_pin)
         elif ESP32:
-            pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING))
+            ei = pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING))
         else:
-            pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING), hard = True)
+            ei = pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING), hard = True)
+        self._eint = ei  # Keep reference??
         self.edge = 0
         self.tim = Timer(-1)  # Sofware timer
         self.cb = self.decode
@@ -129,7 +130,7 @@ class SONY_IR(IR_RX):
     def decode(self, _):
         try:
             nedges = self.edge  # No. of edges detected
-            print(nedges)
+            self.verbose and print('nedges', nedges)
             if nedges > 42:
                 raise RuntimeError(OVERRUN)
             bits = (nedges - 2) // 2
