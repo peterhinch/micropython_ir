@@ -4,10 +4,10 @@ This repo provides a driver to receive from IR (infra red) remote controls and
 a driver for IR "blaster" apps. The device drivers are nonblocking. They do not
 require `uasyncio` but are compatible with it.
 
-NOTE: The receiver is intended to be cross-platform. In testing it has proved
-problematic on ESP8266. The cause is
-[this firmware issue](https://github.com/micropython/micropython/issues/5714)
-which should be fixed in due course.
+The transmitter driver is specific to the Pyboard. The receiver is cross
+platform and has been tested on Pyboard, ESP8266 and ESP32. See
+[Receiver platforms](./README.md#42-receiver-platforms) for test results and
+limitations.
 
 # 1. IR communication
 
@@ -18,7 +18,7 @@ least three options for carrier frequency, namely 36KHz, 38KHz and 40KHz.
 The drivers support NEC and Sony protocols and two Philips protocols, namely
 RC-5 and RC-6 mode 0. In the case of the transmitter the carrier frequency is a
 runtime parameter: any value may be specified. The receiver uses a hardware
-demodulator which should be specified for the correct frequency. The receiver
+demodulator which should be purchased for the correct frequency. The receiver
 device driver sees the demodulated signal and is hence carrier frequency
 agnostic.
 
@@ -27,8 +27,7 @@ protocols exist. Some are doubtless proprietary and undocumented. The supported
 protocols are those for which I managed to locate documentation. My preference
 is for the NEC version. It has conservative timing and ample scope for error
 detection. RC-5 has limited error detection, and RC-6 mode 0 has rather fast
-timing: I doubt that detection can be accomplished on targets slower than a
-Pyboard.
+timing.
 
 A remote using the NEC protocol is [this one](https://www.adafruit.com/products/389).
 
@@ -109,27 +108,30 @@ Args (all protocols):
  4. `*args` Any further args will be passed to the callback.  
 
 Protocol specific args:
- 1. `extended` is an NEC specific boolean. Remotes using the NEC protocol can
- send 8 or 16 bit addresses. If `True` 16 bit addresses are assumed - an 8 bit
- address will be correctly received. Set `False` to enable extra error checking
- for remotes that return an 8 bit address.
- 2. `bits=20` Sony specific. The SIRC protocol comes in 3 variants: 12, 15 and
- 20 bits. The default will handle bitstreams from all three types of remote. A
- value matching your remote improves the timing and reduces the  likelihood of
- errors when handling repeats: in 20-bit mode SIRC timing when a button is held
- down is tight. A worst-case 20-bit block takes 39ms nominal, yet the repeat
- time is 45ms nominal. On ESP32 20-bit mode did not work well.  
+ 1. `extended` NEC specific `bool`. Remotes using the NEC protocol can send 8
+ or 16 bit addresses. If `True` 16 bit addresses are assumed. If an 8 bit
+ address is sent it will be received as a 16 bit value comprising the address
+ and (in bits 8-15) its ones complement. Set `False` to enable error checking
+ for remotes that return an 8 bit address: the complement will be checked and
+ the address will be returned as an 8-bit value.
+ 2. `bits=20` Sony specific `int`. The SIRC protocol comes in 3 variants: 12,
+ 15 and 20 bits. The default will handle bitstreams from all three types of
+ remote. A value matching your remote improves the timing reducing the
+ likelihood of errors when handling repeats: in 20-bit mode SIRC timing when a
+ button is held down is tight. A worst-case 20-bit block takes 39ms nominal,
+ yet the repeat time is 45ms nominal.  
  The Sony remote tested issues both 12 bit and 15 bit streams.
 
 The callback takes the following args:  
- 1. `data` Integer value fom the remote. A negative value indicates an error
+ 1. `data` (`int`) Value from the remote. A negative value indicates an error
  except for the value of -1 which signifies an NEC repeat code (see below).
- 2. `addr` Address from the remote
- 3. `ctrl` 0 in the case of NEC. Philips protocols toggle this bit on repeat
- button presses. If the button is held down the bit is not toggled. The
- transmitter demo implements this behaviour.  
- In the case of Sony the value will be 0 unless receiving a 20-bit stream, in
- which case it will hold the extended value.
+ 2. `addr` (`int`) Address from the remote.
+ 3. `ctrl` (`int`) The meaning of this is protocol dependent.  
+ NEC: 0  
+ Philips: this is toggled 1/0 on repeat button presses. If the button is held
+ down it is not toggled. The  transmitter demo implements this behaviour.  
+ Sony: 0 unless receiving a 20-bit stream, in which case it holds the extended
+ value.
  4. Any args passed to the constructor.
 
 Class variable:  
@@ -139,13 +141,13 @@ Class variable:
 
 IR reception is inevitably subject to errors, notably if the remote is operated
 near the limit of its range, if it is not pointed at the receiver or if its
-batteries are low. So applications must check for, and usually ignore, errors.
-These are flagged by data values < `REPEAT` (-1).
+batteries are low. The user callback should check for, and usually ignore,
+errors. These are flagged by data values < `REPEAT` (-1).
 
-On the ESP8266 there is a further source of errors. This results from the large
-and variable interrupt latency of the device which can exceed the pulse
-duration. This causes pulses to be missed. This tendency is slightly reduced by
-running the chip at 160MHz.
+On ESP8266 and ESP32 there is a further source of errors. This results from the
+large and variable interrupt latency of the device which can exceed the pulse
+duration. This causes pulses to be missed or their timing measured incorrectly.
+On ESP8266 some improvment may be achieved by running the chip at 160MHz.
 
 In general applications should provide user feedback of correct reception.
 Users tend to press the key again if the expected action is absent.
@@ -155,7 +157,7 @@ indicate a repeat code or an error.
 
 `REPEAT` A repeat code was received.
 
-Any data value < `REPEAT` denotes an error. In general applications do not
+Any data value < `REPEAT` (-1) denotes an error. In general applications do not
 need to decode these, but they may be of use in debugging. For completeness
 they are listed below.
 
@@ -172,15 +174,26 @@ against the check byte. This code is returned on failure.
 
 # 4.2 Receiver platforms
 
-The NEC protocol has been tested against Pyboard, ESP8266 and ESP32 targets.
-The Philips protocols - especially RC-6 - have tighter timing constraints.
-Currently the ESP8266 suffers from [this issue](https://github.com/micropython/micropython/issues/5714)
-which prevented testing.
+Currently the ESP8266 suffers from [this issue](https://github.com/micropython/micropython/issues/5714).
+Testing was therefore done without WiFi connectivity.
 
-All modes work on the Pyboard. On ESP32 NEC mode works. Sony works for lengths
-of 12 and 15 bits, but 20 bit mode was not reliable owing to the rate at which
-repeats are transmitted. Philips RC-5 worked, with some "bad block" messages.
-Work is ongoing to characterise ESP32 and ESP8266.
+Philips protocols (especially RC-6) have tight timing constraints with short
+pulses whose length must be determined with reasonable accuracy. The Sony 20
+bit protocol also has a timing issue in that the worst case bit pattern takes
+39ms nominal, yet the repeat time is 45ms nominal. These issues can lead to
+errors particularly on slower targets. As discussed above, errors are to be
+expected. It is up to the user to decide if the error rate is acceptable.
+
+Reception was tested using Pyboard D SF2W, ESP8266 and ESP32 with signals from
+remote controls (where available) and from the tranmitter in this repo. Issues
+are listed below.
+
+NEC: No issues.  
+Sony 12 and 15 bit: No issues.  
+Sony 20 bit: On ESP32 some errors occurred when repeats occurred.  
+Philips RC-5: On ESP32 with one remote control many errors occurred, but paired
+with the transmitter in this repo it worked.  
+Philips RC-6: No issues. Only tested against the transmitter in this repo.
 
 # 4.3 Principle of operation
 
