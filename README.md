@@ -96,37 +96,20 @@ This implements a class for each supported protocol, namely `NEC_IR`,
 appropriate class with a callback. The callback will run whenever an IR pulse
 train is received.
 
-Constructor:  
-`NEC_IR` args: `pin`, `callback`, `extended=True`, `*args`  
-`SONY_IR` args: `pin`, `callback`, `bits=20`, `*args`  
-`RC5_IR` and `RC6_M0`: args `pin`, `callback`, `*args`  
+#### Common to all classes
 
-Args (all protocols):  
+Constructor:  
+Args:  
  1. `pin` is a `machine.Pin` instance configured as an input, connected to the
  IR decoder chip.  
- 2. `callback` is the user supplied callback (see below).
- 4. `*args` Any further args will be passed to the callback.  
+ 2. `callback` is the user supplied callback.
+ 3. `*args` Any further args will be passed to the callback.  
 
-Protocol specific args:
- 1. `extended` NEC specific `bool`. Remotes using the NEC protocol can send 8
- or 16 bit addresses. If `True` 16 bit addresses are assumed. If an 8 bit
- address is sent it will be received as a 16 bit value comprising the address
- and (in bits 8-15) its ones complement. Set `False` to enable error checking
- for remotes that return an 8 bit address: the complement will be checked and
- the address will be returned as an 8-bit value.
- 2. `bits=20` Sony specific `int`. The SIRC protocol comes in 3 variants: 12,
- 15 and 20 bits. The default will handle bitstreams from all three types of
- remote. A value matching your remote improves the timing reducing the
- likelihood of errors when handling repeats: in 20-bit mode SIRC timing when a
- button is held down is tight. A worst-case 20-bit block takes 39ms nominal,
- yet the repeat time is 45ms nominal.  
- The Sony remote tested issues both 12 bit and 15 bit streams.
-
-The callback takes the following args:  
- 1. `data` (`int`) Value from the remote. A negative value indicates an error
- except for the value of -1 which signifies an NEC repeat code (see below).
+The user callback takes the following args:  
+ 1. `data` (`int`) Value from the remote. Normally in range 0-255. A value < 0
+ signifies an NEC repeat code.
  2. `addr` (`int`) Address from the remote.
- 3. `ctrl` (`int`) The meaning of this is protocol dependent.  
+ 3. `ctrl` (`int`) The meaning of this is protocol dependent:  
  NEC: 0  
  Philips: this is toggled 1/0 on repeat button presses. If the button is held
  down it is not toggled. The  transmitter demo implements this behaviour.  
@@ -134,15 +117,38 @@ The callback takes the following args:
  value.
  4. Any args passed to the constructor.
 
-Class variable:  
+Bound variable:  
  1. `verbose=False` If `True` emits debug output.
+
+Method:
+ 1. `error_function` Arg: a function taking a single arg. If this is specified
+ it will be called if an error occurs. The value corresponds to the error code
+ (see below).
+
+#### Properties specific to a class
+
+`NEC_IR`:  
+`extended` `bool`. Remotes using the NEC protocol can send 8 or 16 bit
+addresses. If `True` 16 bit addresses are assumed. If an 8 bit address is sent
+it will be received as a 16 bit value comprising the address and (in bits 8-15)
+its ones complement. Set `False` to enable error checking for remotes that
+return an 8 bit address: the complement will be checked and the address will be
+returned as an 8-bit value. The default is `True`.
+
+`SONY_IR`:  
+`bits` `int`. The SIRC protocol comes in 3 variants: 12, 15 and 20 bits. The
+default will handle bitstreams from all three types of remote. A value matching
+your remote improves the timing reducing the likelihood of errors when handling
+repeats: in 20-bit mode SIRC timing when a button is held down is tight. A
+worst-case 20-bit block takes 39ms nominal, yet the repeat time is 45ms nominal.  
+The Sony remote tested issues both 12 bit and 15 bit streams. The default is
+20.
 
 # 4.1 Errors
 
 IR reception is inevitably subject to errors, notably if the remote is operated
 near the limit of its range, if it is not pointed at the receiver or if its
-batteries are low. The user callback should check for, and usually ignore,
-errors. These are flagged by data values < `REPEAT` (-1).
+batteries are low. The user callback is not called when an error occurs.
 
 On ESP8266 and ESP32 there is a further source of errors. This results from the
 large and variable interrupt latency of the device which can exceed the pulse
@@ -152,14 +158,9 @@ On ESP8266 some improvment may be achieved by running the chip at 160MHz.
 In general applications should provide user feedback of correct reception.
 Users tend to press the key again if the expected action is absent.
 
-Data values passed to the callback are zero or positive. Negative values
-indicate a repeat code or an error.
-
-`REPEAT` A repeat code was received.
-
-Any data value < `REPEAT` (-1) denotes an error. In general applications do not
-need to decode these, but they may be of use in debugging. For completeness
-they are listed below.
+In debugging a callback can be specified for reporting errors. The value passed
+to the error function are represented by constants indicating the cause of the
+error. These are as follows:
 
 `BADSTART` A short (<= 4ms) start pulse was received. May occur due to IR
 interference, e.g. from fluorescent lights. The TSOP4838 is prone to producing
@@ -169,7 +170,7 @@ owing to high interrupt latency.
 `BADREP` A repeat block: an incorrect number of edges were received.  
 `OVERRUN` A normal data block: too many edges received.  
 `BADDATA` Data did not match check byte.  
-`BADADDR` Where `extended` is `False` the 8-bit address is checked
+`BADADDR` (`NEC_IR`) If `extended` is `False` the 8-bit address is checked
 against the check byte. This code is returned on failure.  
 
 # 4.2 Receiver platforms

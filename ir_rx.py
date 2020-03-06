@@ -40,12 +40,15 @@ BADADDR = -7
 # a block start and a repeat code start (~108ms depending on protocol)
 
 class IR_RX():
-    verbose = False
+    _erstr = "'{}' object has no attribute '{}'"
+
     def __init__(self, pin, nedges, tblock, callback, *args):  # Optional args for callback
         self._nedges = nedges
         self._tblock = tblock
         self.callback = callback
         self.args = args
+        self._errf = lambda _ : None
+        self.verbose = False
 
         self._times = array('i',  (0 for _ in range(nedges + 1)))  # +1 for overrun
         if platform == 'pyboard':
@@ -70,12 +73,29 @@ class IR_RX():
             self._times[self.edge] = t
             self.edge += 1
 
+    @property
+    def extended(self):
+        raise AttributeError(self._erstr.format(self.__qualname__, 'extended'))
+
+    @property
+    def bits(self):
+        raise AttributeError(self._erstr.format(self.__qualname__, 'bits'))
+
+    def do_callback(self, cmd, addr, ext, thresh=0):
+        self.edge = 0
+        if cmd >= thresh:
+            self.callback(cmd, addr, ext, *self.args)
+        else:
+            self._errf(cmd)
+
+    def error_function(self, func):
+        self._errf = func
+
 class NEC_IR(IR_RX):
-    def __init__(self, pin, callback, extended=True, *args):
-        # Block lasts <= 80ms and has 68 edges
-        tblock = 80 if extended else 73  # Allow for some tx tolerance (?)
-        super().__init__(pin, 68, tblock, callback, *args)
-        self._extended = extended
+    def __init__(self, pin, callback, *args):
+        # Block lasts <= 80ms (extended mode) and has 68 edges
+        super().__init__(pin, 68, 80, callback, *args)
+        self._extended = True
         self._addr = 0
 
     def decode(self, _):
@@ -113,19 +133,26 @@ class NEC_IR(IR_RX):
         except RuntimeError as e:
             cmd = e.args[0]
             addr = self._addr if cmd == REPEAT else 0  # REPEAT uses last address
-        self.edge = 0  # Set up for new data burst and run user callback
-        self.callback(cmd, addr, 0, *self.args)
+        # Set up for new data burst and run user callback
+        self.do_callback(cmd, addr, 0, REPEAT)
 
+    @property
+    def extended(self):
+        return self._extended
+
+    @extended.setter
+    def extended(self, value):
+        self._extended = bool(value)
 
 class SONY_IR(IR_RX):
-    def __init__(self, pin, callback, bits=20, *args):
+    def __init__(self, pin, callback, *args):
         # 20 bit block has 42 edges and lasts <= 39ms nominal. Add 4ms to time
         # for tolerances except in 20 bit case where timing is tight with a
         # repeat period of 45ms.
         t = int(3 + bits * 1.8) + (1 if bits == 20 else 4)
         super().__init__(pin, 2 + bits * 2, t, callback, *args)
         self._addr = 0
-        self._bits = bits
+        self._bits = 20
 
     def decode(self, _):
         try:
@@ -165,8 +192,17 @@ class SONY_IR(IR_RX):
             cmd = e.args[0]
             addr = 0
             val = 0
-        self.edge = 0  # Set up for new data burst and run user callback
-        self.callback(cmd, addr, val, *self.args)
+        self.do_callback(cmd, addr, val)
+
+    @property
+    def bits(self):
+        return self._bits
+
+    @bits.setter
+    def bits(self, value):
+        if value not in (12, 15, 20):
+            raise ValueError('bits must be 12, 15 or 20')
+        self._bits = value
 
 class RC5_IR(IR_RX):
     def __init__(self, pin, callback, *args):
@@ -213,8 +249,8 @@ class RC5_IR(IR_RX):
 
         except RuntimeError as e:
             val, addr, ctrl = e.args[0], 0, 0
-        self.edge = 0  # Set up for new data burst and run user callback
-        self.callback(val, addr, ctrl, *self.args)
+        # Set up for new data burst and run user callback
+        self.do_callback(val, addr, ctrl)
 
 class RC6_M0(IR_RX):
     # Even on Pyboard D the 444μs nominal pulses can be recorded as up to 705μs
@@ -284,5 +320,5 @@ class RC6_M0(IR_RX):
             ctrl = (v >> 16) & 1
         except RuntimeError as e:
             val, addr, ctrl = e.args[0], 0, 0
-        self.edge = 0  # Set up for new data burst and run user callback
-        self.callback(val, addr, ctrl, *self.args)
+        # Set up for new data burst and run user callback
+        self.do_callback(val, addr, ctrl)

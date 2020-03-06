@@ -22,18 +22,19 @@ elif platform == 'esp8266':
 elif ESP32:
     p = Pin(23, Pin.IN)  # was 27
 
-errors = {BADSTART : 'Invalid start pulse', BADBLOCK : 'Error: bad block',
-          BADREP : 'Error: repeat', OVERRUN : 'Error: overrun',
-          BADDATA : 'Error: invalid data', BADADDR : 'Error: invalid address'}
-
+# User callback
 def cb(data, addr, ctrl):
-    if data == REPEAT:  # NEC protocol sends repeat codes.
+    if data < 0:  # NEC protocol sends repeat codes.
         print('Repeat code.')
-    elif data >= 0:
-        print('Data {:03x} Addr {:03x} Ctrl {:01x}'.format(data, addr, ctrl))
     else:
-        print(errors[data])  # Application would ignore errors
+        print('Data {:03x} Addr {:03x} Ctrl {:01x}'.format(data, addr, ctrl))
 
+# Optionally print debug information
+def errf(data):
+    errors = {BADSTART : 'Invalid start pulse', BADBLOCK : 'Error: bad block',
+            BADREP : 'Error: repeat', OVERRUN : 'Error: overrun',
+            BADDATA : 'Error: invalid data', BADADDR : 'Error: invalid address'}
+    print(errors[data])
 
 s = '''Test for IR receiver. Run:
 from ir_rx_test import test
@@ -52,13 +53,14 @@ def test(proto=0):
     if proto == 0:
         ir = NEC_IR(p, cb)  # Extended mode
     elif proto < 4:
-        bits = (12, 15, 20)[proto - 1]
-        ir = SONY_IR(p, cb, bits)
+        ir = SONY_IR(p, cb)
+        ir.bits = (12, 15, 20)[proto - 1]
         #ir.verbose = True
     elif proto == 5:
         ir = RC5_IR(p, cb)
     elif proto == 6:
         ir = RC6_M0(p, cb)
+    ir.error_function(errf)  # Show debug information
     # A real application would do something here...
     while True:
         print('running')
