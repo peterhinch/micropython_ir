@@ -69,8 +69,11 @@ On import, demos print an explanation of how to run them.
 
 ## 3.1 Receiver
 
-Copy the following files to the target filesystem:
- 1. `ir_rx.py` The receiver device driver.
+This is a Python package. This minimises RAM usage: applications only import
+the device driver for the protocol in use.
+
+Copy the following to the target filesystem:
+ 1. `ir_rx` Directory and contents. Contains the device drivers.
  2. `ir_rx_test.py` Demo of a receiver.
 
 There are no dependencies.
@@ -91,10 +94,29 @@ from the official library and `aswitch.py` from
 
 # 4. Receiver
 
-This implements a class for each supported protocol, namely `NEC_IR`,
-`SONY_IR`, `RC5_IR` and `RC6_M0`. Applications should instantiate the
-appropriate class with a callback. The callback will run whenever an IR pulse
-train is received.
+This implements a class for each supported protocol. Applications should
+instantiate the appropriate class with a callback. The callback will run
+whenever an IR pulse train is received. Example running on a Pyboard:
+
+```python
+import time
+from machine import Pin
+from pyb import LED
+from ir_rx.nec import NEC_8  # NEC remote, 8 bit addresses
+
+red = LED(1)
+
+def callback(data, addr, ctrl):
+    if data < 0:  # NEC protocol sends repeat codes.
+        print('Repeat code.')
+    else:
+        print('Data {:02x} Addr {:04x}'.format(data, addr))
+
+ir = NEC_8(Pin('X3', Pin.IN), callback)
+while True:
+    time.sleep_ms(500)
+    red.toggle()
+```
 
 #### Common to all classes
 
@@ -125,24 +147,46 @@ Method:
  it will be called if an error occurs. The value corresponds to the error code
  (see below).
 
-#### Properties specific to a class
+#### NEC classes
 
-`NEC_IR`:  
-`extended` `bool`. Remotes using the NEC protocol can send 8 or 16 bit
-addresses. If `True` 16 bit addresses are assumed. If an 8 bit address is sent
-it will be received as a 16 bit value comprising the address and (in bits 8-15)
-its ones complement. Set `False` to enable error checking for remotes that
-return an 8 bit address: the complement will be checked and the address will be
-returned as an 8-bit value. The default is `True`.
+`NEC_8`, `NEC_16`
 
-`SONY_IR`:  
-`bits` `int`. The SIRC protocol comes in 3 variants: 12, 15 and 20 bits. The
-default will handle bitstreams from all three types of remote. A value matching
-your remote improves the timing reducing the likelihood of errors when handling
-repeats: in 20-bit mode SIRC timing when a button is held down is tight. A
-worst-case 20-bit block takes 39ms nominal, yet the repeat time is 45ms nominal.  
-The Sony remote tested issues both 12 bit and 15 bit streams. The default is
-20.
+```python
+from ir_rx.nec import NEC_8
+```
+
+Remotes using the NEC protocol can send 8 or 16 bit addresses. If the `NEC_16`
+class receives an 8 bit address it will get a 16 bit value comprising the
+address in bits 0-7 and its one's complement in bits 8-15.  
+The `NEC_8` class enables error checking for remotes that return an 8 bit
+address: the complement is checked and the address returned as an 8-bit value.
+A 16-bit address will result in an error.
+
+#### Sony classes
+
+`SONY_12`, `SONY_15`, `SONY_20`
+
+```python
+from ir_rx.sony import SONY_15
+```
+
+The SIRC protocol comes in 3 variants: 12, 15 and 20 bits. `SONY_20` handles
+bitstreams from all three types of remote. Choosing a class matching the remote
+improves the timing reducing the likelihood of errors when handling repeats: in
+20-bit mode SIRC timing when a button is held down is tight. A worst-case 20
+bit block takes 39ms nominal, yet the repeat time is 45ms nominal.  
+A single physical remote can issue more than one type of bitstream. The Sony
+remote tested issued both 12 bit and 15 bit streams.
+
+#### Philips classes
+
+`RC5_IR`, `RC6_M0`
+
+```python
+from ir_rx.philips import RC5_IR
+```
+
+These support the RC-5 and RC-6 mode 0 protocols respectively.
 
 # 4.1 Errors
 

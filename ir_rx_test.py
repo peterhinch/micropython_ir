@@ -10,16 +10,19 @@ from sys import platform
 import time
 import gc
 from machine import Pin, freq
-from ir_rx import *
+from ir_rx.print_error import print_error  # Optional print of error codes
+# Import all implemented classes
+from ir_rx.nec import NEC_8, NEC_16
+from ir_rx.sony import SONY_12, SONY_15, SONY_20
+from ir_rx.philips import RC5_IR, RC6_M0
 
-ESP32 = platform == 'esp32' or platform == 'esp32_LoBo'
-
+# Define pin according to platform
 if platform == 'pyboard':
     p = Pin('X3', Pin.IN)
 elif platform == 'esp8266':
     freq(160000000)
     p = Pin(13, Pin.IN)
-elif ESP32:
+elif platform == 'esp32' or platform == 'esp32_LoBo':
     p = Pin(23, Pin.IN)  # was 27
 
 # User callback
@@ -27,42 +30,30 @@ def cb(data, addr, ctrl):
     if data < 0:  # NEC protocol sends repeat codes.
         print('Repeat code.')
     else:
-        print('Data {:03x} Addr {:03x} Ctrl {:01x}'.format(data, addr, ctrl))
+        print('Data {:02x} Addr {:04x} Ctrl {:02x}'.format(data, addr, ctrl))
 
-# Optionally print debug information
-def errf(data):
-    errors = {BADSTART : 'Invalid start pulse', BADBLOCK : 'Error: bad block',
-            BADREP : 'Error: repeat', OVERRUN : 'Error: overrun',
-            BADDATA : 'Error: invalid data', BADADDR : 'Error: invalid address'}
-    print(errors[data])
+def test(proto=0):
+    classes = (NEC_8, NEC_16, SONY_12, SONY_15, SONY_20, RC5_IR, RC6_M0)
+    ir = classes[proto](p, cb)  # Instantiate receiver
+    ir.error_function(print_error)  # Show debug information
+    #ir.verbose = True
+    # A real application would do something here...
+    while True:
+        print('running')
+        time.sleep(5)
+        gc.collect()
 
+# **** DISPLAY GREETING ****
 s = '''Test for IR receiver. Run:
 from ir_rx_test import test
-test() for NEC protocol,
-test(1) for Sony SIRC 12 bit,
-test(2) for Sony SIRC 15 bit,
-test(3) for Sony SIRC 20 bit,
+test() for NEC 8 bit protocol,
+test(1) for NEC 16 bit,
+test(2) for Sony SIRC 12 bit,
+test(3) for Sony SIRC 15 bit,
+test(4) for Sony SIRC 20 bit,
 test(5) for Philips RC-5 protocol,
 test(6) for RC6 mode 0.
 
 Hit ctrl-c to stop, then ctrl-d to soft reset.'''
 
 print(s)
-
-def test(proto=0):
-    if proto == 0:
-        ir = NEC_IR(p, cb)  # Extended mode
-    elif proto < 4:
-        ir = SONY_IR(p, cb)
-        ir.bits = (12, 15, 20)[proto - 1]
-        #ir.verbose = True
-    elif proto == 5:
-        ir = RC5_IR(p, cb)
-    elif proto == 6:
-        ir = RC6_M0(p, cb)
-    ir.error_function(errf)  # Show debug information
-    # A real application would do something here...
-    while True:
-        print('running')
-        time.sleep(5)
-        gc.collect()
