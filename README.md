@@ -147,6 +147,15 @@ Method:
  it will be called if an error occurs. The value corresponds to the error code
  (see below).
 
+A function is provided to print errors in human readable form. This may be
+invoked as follows:
+
+```python
+from ir_rx.print_error import print_error  # Optional print of error codes
+# Assume ir is an instance of an IR receiver class
+ir.error_function(print_error)
+```
+
 #### NEC classes
 
 `NEC_8`, `NEC_16`
