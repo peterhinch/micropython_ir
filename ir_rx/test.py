@@ -1,5 +1,5 @@
-# ir_rx_test.py Test program for IR remote control decoder arem.py
-# Supports Pyboard and ESP8266
+# test.py Test program for IR remote control decoder
+# Supports Pyboard ESP32 and ESP8266
 
 # Author: Peter Hinch
 # Copyright Peter Hinch 2020 Released under the MIT license
@@ -32,7 +32,7 @@ def cb(data, addr, ctrl):
     else:
         print('Data {:02x} Addr {:04x} Ctrl {:02x}'.format(data, addr, ctrl))
 
-def test(proto=0):
+def run(proto=0):
     classes = (NEC_8, NEC_16, SONY_12, SONY_15, SONY_20, RC5_IR, RC6_M0)
     ir = classes[proto](p, cb)  # Instantiate receiver
     ir.error_function(print_error)  # Show debug information
@@ -45,14 +45,14 @@ def test(proto=0):
 
 # **** DISPLAY GREETING ****
 s = '''Test for IR receiver. Run:
-from ir_rx_test import test
-test() for NEC 8 bit protocol,
-test(1) for NEC 16 bit,
-test(2) for Sony SIRC 12 bit,
-test(3) for Sony SIRC 15 bit,
-test(4) for Sony SIRC 20 bit,
-test(5) for Philips RC-5 protocol,
-test(6) for RC6 mode 0.
+from ir_rx import test
+test.run() for NEC 8 bit protocol,
+test.run(1) for NEC 16 bit,
+test.run(2) for Sony SIRC 12 bit,
+test.run(3) for Sony SIRC 15 bit,
+test.run(4) for Sony SIRC 20 bit,
+test.run(5) for Philips RC-5 protocol,
+test.run(6) for RC6 mode 0.
 
 Hit ctrl-c to stop, then ctrl-d to soft reset.'''
 

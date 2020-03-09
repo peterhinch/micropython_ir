@@ -73,10 +73,17 @@ This is a Python package. This minimises RAM usage: applications only import
 the device driver for the protocol in use.
 
 Copy the following to the target filesystem:
- 1. `ir_rx` Directory and contents. Contains the device drivers.
- 2. `ir_rx_test.py` Demo of a receiver.
+ 1. `ir_rx` Directory and contents. Contains device drivers and test script.
 
 There are no dependencies.
+
+The test script may be used to characterise remote controls. To run it issue:
+```python
+from ir_rx import test
+```
+The script will display instructions for running against the various protocols.
+If you are unsure which protocol your remote uses, try each one in turn. If
+none of the options work it may be that an unsupported protocol is in use.
 
 The demo can be used to characterise IR remotes. It displays the codes returned
 by each button. This can aid in the design of receiver applications. The demo
