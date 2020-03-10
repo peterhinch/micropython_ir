@@ -5,11 +5,18 @@
 # Copyright (c) 2020 Peter Hinch
 
 # Implements a 2-button remote control on a Pyboard with auto repeat.
-
-from pyb import Pin, LED
+from sys import platform
+ESP32 = platform == 'esp32' or platform == 'esp32_LoBo'
+if ESP32:
+    from machine import Pin
+else:
+    from pyb import Pin, LED
 import uasyncio as asyncio
 from aswitch import Switch, Delay_ms
-from ir_tx import NEC, SONY, RC5, RC6_M0
+# Import all implemented classes
+from ir_tx.nec import NEC
+from ir_tx.sony import SONY_12, SONY_15, SONY_20
+from ir_tx.philips import RC5, RC6_M0
 
 loop = asyncio.get_event_loop()
 
@@ -48,40 +55,50 @@ async def main(proto):
     # Test uses a 38KHz carrier. Some Philips systems use 36KHz.
     # If button is held down normal behaviour is to retransmit
     # but most NEC models send a REPEAT code
-    rep_code = False  # Rbutton constructor requires False for RC-X. NEC protocol only.
-    pin = Pin('X1')
-    if not proto:
-        irb = NEC(pin)  # Default NEC freq == 38KHz
-        # Option to send REPEAT code. Most remotes do this.
-        rep_code = True
-    elif proto < 4:
-        bits = (12, 15, 20)[proto - 1]
-        irb = SONY(pin, bits, 38000)  # My decoder chip is 38KHz
-    elif proto == 5:
-        irb = RC5(pin, 38000)  # My decoder chip is 38KHz
-    elif proto == 6:
-        irb = RC6_M0(pin, 38000)
+    rep_code = proto == 0  # Rbutton constructor requires False for RC-X. NEC protocol only.
+    pin = Pin(23, Pin.OUT) if ESP32 else Pin('X1')
+    classes = (NEC, SONY_12, SONY_15, SONY_20, RC5, RC6_M0)
+    irb = classes[proto](pin, 38000)  # My decoder chip is 38KHz
 
     b = []  # Rbutton instances
-    b.append(Rbutton(irb, Pin('X3', Pin.IN, Pin.PULL_UP), 0x1, 0x7, rep_code))
-    b.append(Rbutton(irb, Pin('X4', Pin.IN, Pin.PULL_UP), 0x10, 0xb, rep_code))
-    led = LED(1)
-    while True:
-        await asyncio.sleep_ms(500)  # Obligatory flashing LED.
-        led.toggle()
+    px3 = Pin(18, Pin.IN, Pin.PULL_UP) if ESP32 else Pin('X3', Pin.IN, Pin.PULL_UP)
+    px4 = Pin(19, Pin.IN, Pin.PULL_UP) if ESP32 else Pin('X4', Pin.IN, Pin.PULL_UP)
+    b.append(Rbutton(irb, px3, 0x1, 0x7, rep_code))
+    b.append(Rbutton(irb, px4, 0x10, 0xb, rep_code))
+    if ESP32:
+        while True:
+            print('Running')
+            await asyncio.sleep(5)
+    else:
+        led = LED(1)
+        while True:
+            await asyncio.sleep_ms(500)  # Obligatory flashing LED.
+            led.toggle()
 
 s = '''Test for IR transmitter. Run:
 from ir_tx_test import test
 test() for NEC protocol
 test(1) for Sony SIRC 12 bit
 test(2) for Sony SIRC 15 bit
-test(3) for Sony SIRC 20 bit
+test(3) for Sony SIRC 20 bit'''
+spb = '''
 test(5) for Philips RC-5 protocol
 test(6) for Philips RC-6 mode 0.
 
-Ground X3 to send addr 1 data 7
-Ground X4 to send addr 0x10 data 0x0b.'''
+IR LED on pin X1
+Ground pin X3 to send addr 1 data 7
+Ground pin X4 to send addr 0x10 data 0x0b.'''
+sesp = '''
+
+IR LED on pin 23
+Ground pin 18 to send addr 1 data 7
+Ground pin 19 to send addr 0x10 data 0x0b.'''
+if ESP32:
+    s = ''.join((s, sesp))
+else:
+    s = ''.join((s, spb))
 print(s)
+
 
 def test(proto=0):
     loop.run_until_complete(main(proto))
