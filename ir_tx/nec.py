@@ -33,6 +33,5 @@ class NEC(IR):
 
     def repeat(self):
         self.aptr = 0
-        self.append(9000, 2250, _TBURST, STOP)
-        self.aptr = 0  # Reset pointer
-        self.cb(self._tim)  # Initiate physical transmission.
+        self.append(9000, 2250, _TBURST)
+        self.trigger()  # Initiate physical transmission.

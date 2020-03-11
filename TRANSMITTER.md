@@ -5,7 +5,7 @@
 # 1. Hardware Requirements
 
 The transmitter requires a Pyboard 1.x (not Lite), a Pyboard D or an ESP32.
-Output is via an IR LED which will need a transistor to provide sufficient
+Output is via an IR LED which needs a simple circuit to provide sufficient
 current. Typically these need 50-100mA of drive to achieve reasonable range and
 data integrity. A suitable 940nm LED is [this one](https://www.adafruit.com/product/387).
 
@@ -13,10 +13,10 @@ On the Pyboard the transmitter test script assumes pin X1 for IR output. It can
 be changed, but it must support Timer 2 channel 1. Pins for pushbutton inputs
 are arbitrary: X3 and X4 are used. The driver uses timers 2 and 5.
 
-On ESP32 pin 23 is used for IR output and pins 18 and 19 for pushbuttons. The
-ESP32 solution has limitations discussed in [section 5.2](./TRANSMITTER.md#52-esp32).
+On ESP32 the demo uses pins 21 and 23 for IR output and pins 18 and 19 for
+pushbuttons. These pins may be changed.
 
-## 1.1 Wiring
+## 1.1 Pyboard Wiring
 
 I use the following circuit which delivers just under 40mA to the diode. R2 may
 be reduced for higher current.  
@@ -33,7 +33,31 @@ The driver assumes circuits as shown. Here the carrier "off" state is 0V,
 which is the driver default. If using a circuit where "off" is required to be
 3.3V, the constant `_SPACE` in `ir_tx.__init__.py` should be changed to 100.
 
-# 2. Installation
+## 1.2 ESP32 Wiring
+
+The ESP32 RMT device does not currently support the carrier option. A simple
+hardware gate is required to turn the IR LED on when both the carrier pin and
+the RMT pin are high. A suitable circuit is below.  
+![Image](images/gate.png)
+
+The transistor type is not critical. A gate could be built with two similarly
+connected N-channel MOSFETS. The 1KΩ resistors would not be required. The
+MOSFETS would require a low RDSon at Vgs == 3.3V. A ZVN4210A seems suitable
+but I haven't tried it.
+
+# 2. Dependencies and installation
+
+## 2.1 Dependencies
+
+The device driver has no dependencies.
+
+On ESP32 a firmware version >= V1.12 is required. The Loboris port is not
+supported owing to the need for the RMT device.
+
+The demo program requires `uasyncio` from the official library and `aswitch.py`
+from [this repo](https://github.com/peterhinch/micropython-async).
+
+## 2.2 Installation
 
 The transmitter is a Python package. This minimises RAM usage: applications
 only import the device driver for the protocol in use.
@@ -41,12 +65,8 @@ only import the device driver for the protocol in use.
 Copy the following to the target filesystem:
  1. `ir_tx` Directory and contents.
 
-The device driver has no dependencies.
-
-The demo program requires `uasyncio` from the official library and `aswitch.py`
-from [this repo](https://github.com/peterhinch/micropython-async). The demo is
-of a 2-button remote controller with auto-repeat. It may be run by issuing:
-
+The demo is of a 2-button remote controller with auto-repeat. It may be run by
+issuing:
 ```python
 from ir_tx.test import test
 ```
@@ -60,10 +80,6 @@ It implements a class for each supported protocol, namely `NEC`, `SONY_12`,
 `SONY_15`, `SONY_20`, `RC5` and `RC6_M0`.  Each class is subclassed from a
 common abstract base class in `__init__.py`. The application instantiates the
 appropriate class and calls the `transmit` method to send data.
-
-The ESP32 platform is marginal in this application because of imprecision in
-its timing. The Philips protocols are unsupported as they require unachievable
-levels of precision. Test results are discussed [here](./TRANSMITTER.md#52-esp32).
 
 #### Common to all classes
 
@@ -112,9 +128,6 @@ value.
 
 #### Philips classes
 
-These are only supported on Pyboard hosts. An `RuntimeError` will be thrown on
-an attempt to instantiate a Philips class on an ESP32.
-
 The RC-5 protocol supports a 5 bit address and 6 or 7 bit (RC5X) data. The
 driver uses the appropriate mode depending on the `data` value provided.
 
@@ -124,17 +137,15 @@ Both send a `toggle` bit which remains constant if a button is held down, but
 changes when the button is released. The application should implement this
 behaviour, setting the `toggle` arg of `.transmit` to 0 or 1 as required.
 
-# 4. Test results
+# 4. Principle of operation
 
-# 5. Principle of operation
-
-## 5.1 Pyboard
+## 4.1 Pyboard
 
 The classes inherit from the abstract base class `IR`. This has an array `.arr`
 to contain the duration (in μs) of each carrier on or off period. The
 `transmit` method calls a `tx` method of the subclass which populates this
 array. This is done by two methods of the base class, `.append` and `.add`. The
-former takes a list of times (in μs) and appends them to the array. A bound
+former takes a list of times (in ) and appends them to the array. A bound
 variable `.carrier` keeps track of the notional on/off state of the carrier:
 this is required for bi-phase (manchester) codings.
 
@@ -155,32 +166,17 @@ The duty ratio is changed by the Timer 5 callback `._cb`. This retrieves the
 next duration from the array. If it is not `STOP` it toggles the duty cycle
 and re-initialises T5 for the new duration.
 
-## 5.2 ESP32
+## 4.2 ESP32
 
-This is something of a hack because my drivers work with standard firmware.
+The carrier is output continuously at the specified duty ratio. A pulse train
+generated by the RMT instance drives a hardware gate such that the IR LED is
+lit only when both carrier and RMT are high.
 
-A much better solution will be possible when the `esp32.RMT` class supports the
-`carrier` option. A fork supporting this is
-[here](https://github.com/mattytrentini/micropython). You may want to adapt the
-base class to use this fork: it should be easy and would produce a solution
-capable of handling all protocols.
+The carrier is generated by PWM instance `.pwm` running continuously. The ABC
+constructor converts the 0-100 duty ratio specified by the subclass to the
+0-1023 range used by ESP32.
 
-A consequence of this hack is that timing is imprecise. In testing NEC
-protocols were reliable. Sony delivered some erroneous bitsreams but may be
-usable. Philips protocols require timing precision which is unachievable; these
-are unsupported.
-
-The ABC stores durations in Hz rather than in μs. This is because the `period`
-arg of `Timer.init` expects an integer number of ms. Passing a `freq` value
-enables slightly higher resolution timing. In practice timing lacks precision
-with the code having a hack which subtracts a nominal amount from each value to
-compensate for the typical level of overrun.
-
-The carrier is generated by PWM instance `.pwm` with its duty cycle controlled
-by software timer `._tim` in a similar way to the Pyboard Timer 5 described
-above. The ESP32 duty value is in range 0-1023 as against 0-100 on the Pyboard.
-
-# 6. References
+# 5. References
 
 [General information about IR](https://www.sbprojects.net/knowledge/ir/)
 

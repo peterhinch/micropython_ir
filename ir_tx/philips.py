@@ -6,7 +6,6 @@
 
 from micropython import const
 from sys import platform
-ESP32 = platform == 'esp32' or platform == 'esp32_LoBo'
 from ir_tx import IR
 
 # Philips RC5 protocol
@@ -15,8 +14,6 @@ ermsg = 'ESP32 does not support Philips protocols'
 class RC5(IR):
 
     def __init__(self, pin, freq=36000, verbose=False):
-        if ESP32:
-            raise RuntimeError(ermsg)
         super().__init__(pin, freq, 28, 30, verbose)
 
     def tx(self, addr, data, toggle):
@@ -42,8 +39,6 @@ _T2_RC6 = const(889)
 class RC6_M0(IR):
 
     def __init__(self, pin, freq=36000, verbose=False):
-        if ESP32:
-            raise RuntimeError(ermsg)
         super().__init__(pin, freq, 44, 30, verbose)
 
     def tx(self, addr, data, toggle):

@@ -32,7 +32,7 @@ def cb(data, addr, ctrl):
     else:
         print('Data {:02x} Addr {:04x} Ctrl {:02x}'.format(data, addr, ctrl))
 
-def run(proto=0):
+def test(proto=0):
     classes = (NEC_8, NEC_16, SONY_12, SONY_15, SONY_20, RC5_IR, RC6_M0)
     ir = classes[proto](p, cb)  # Instantiate receiver
     ir.error_function(print_error)  # Show debug information

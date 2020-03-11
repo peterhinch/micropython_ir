@@ -6,7 +6,7 @@
 
 # Implements a 2-button remote control on a Pyboard with auto repeat.
 from sys import platform
-ESP32 = platform == 'esp32' or platform == 'esp32_LoBo'
+ESP32 = platform == 'esp32'
 if ESP32:
     from machine import Pin
 else:
@@ -56,7 +56,10 @@ async def main(proto):
     # If button is held down normal behaviour is to retransmit
     # but most NEC models send a REPEAT code
     rep_code = proto == 0  # Rbutton constructor requires False for RC-X. NEC protocol only.
-    pin = Pin(23, Pin.OUT) if ESP32 else Pin('X1')
+    if ESP32:  # Pins for IR LED gate
+        pin = (Pin(23, Pin.OUT, value = 0), Pin(21, Pin.OUT, value = 0))
+    else:
+        pin = Pin('X1')
     classes = (NEC, SONY_12, SONY_15, SONY_20, RC5, RC6_M0)
     irb = classes[proto](pin, 38000)  # My decoder chip is 38KHz
 
@@ -75,30 +78,30 @@ async def main(proto):
             await asyncio.sleep_ms(500)  # Obligatory flashing LED.
             led.toggle()
 
+# Greeting strings. Common:
 s = '''Test for IR transmitter. Run:
 from ir_tx_test import test
 test() for NEC protocol
 test(1) for Sony SIRC 12 bit
 test(2) for Sony SIRC 15 bit
-test(3) for Sony SIRC 20 bit'''
-spb = '''
-test(5) for Philips RC-5 protocol
-test(6) for Philips RC-6 mode 0.
+test(3) for Sony SIRC 20 bit
+test(4) for Philips RC-5 protocol
+test(5) for Philips RC-6 mode 0.
+'''
 
+# Pyboard:
+spb = '''
 IR LED on pin X1
 Ground pin X3 to send addr 1 data 7
 Ground pin X4 to send addr 0x10 data 0x0b.'''
-sesp = '''
 
-IR LED on pin 23
+# ESP32
+sesp = '''
+IR LED gate on pins 23, 21
 Ground pin 18 to send addr 1 data 7
 Ground pin 19 to send addr 0x10 data 0x0b.'''
-if ESP32:
-    s = ''.join((s, sesp))
-else:
-    s = ''.join((s, spb))
-print(s)
 
+print(''.join((s, sesp)) if ESP32 else ''.join((s, spb)))
 
 def test(proto=0):
     loop.run_until_complete(main(proto))
