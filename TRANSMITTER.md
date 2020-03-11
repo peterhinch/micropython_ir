@@ -65,14 +65,16 @@ The ESP32 platform is marginal in this application because of imprecision in
 its timing. The Philips protocols are unsupported as they require unachievable
 levels of precision. Test results are discussed [here](./TRANSMITTER.md#52-esp32).
 
-Constructor  
-All constructors take the following args:  
- 1. `pin` An initialised `pyb.Pin` instance supporting Timer 2 channel 1: `X1`
- is employed by the test script. Must be connected to the IR diode as described
- below.
+#### Common to all classes
+
+Constructor args:  
+ 1. `pin` A Pin instance instantiated as an output. On a Pyboard this is a
+ `pyb.Pin` instance supporting Timer 2 channel 1: `X1` is employed by the test
+ script. On ESP32 any `machine.Pin` may be used. Must be connected to the IR
+ diode as described below.
  2. `freq=default` The carrier frequency in Hz. The default for NEC is 38000,
  Sony is 40000 and Philips is 36000.
- 3. `verbose=False` If `True` emits debug output.
+ 3. `verbose=False` If `True` emits (a lot of) debug output.
 
 Method:
  1. `transmit(addr, data, toggle=0)` Integer args. `addr` and `data` are
@@ -93,9 +95,9 @@ The NEC protocol accepts 8 or 16 bit addresses. In the former case, a 16 bit
 value is transmitted comprising the 8 bit address and its one's complement,
 enabling the receiver to perform a simple error check. The `NEC` class supports
 these modes by checking the value of `addr` passed to `.transmit` and sending
-the complement for 8 bit values.
+the complement for values < 256.
 
-`toggle` is ignored.
+A value passed in `toggle` is ignored.
 
 #### Sony classes
 
@@ -109,6 +111,9 @@ above. `toggle` is ignored except by `SONY_20` which treats it as the extended
 value.
 
 #### Philips classes
+
+These are only supported on Pyboard hosts. An `RuntimeError` will be thrown on
+an attempt to instantiate a Philips class on an ESP32.
 
 The RC-5 protocol supports a 5 bit address and 6 or 7 bit (RC5X) data. The
 driver uses the appropriate mode depending on the `data` value provided.
@@ -163,8 +168,7 @@ capable of handling all protocols.
 A consequence of this hack is that timing is imprecise. In testing NEC
 protocols were reliable. Sony delivered some erroneous bitsreams but may be
 usable. Philips protocols require timing precision which is unachievable; these
-are unsupported and an exception will be thrown on an attempt to instantiate a
-Philips class on an ESP32.
+are unsupported.
 
 The ABC stores durations in Hz rather than in μs. This is because the `period`
 arg of `Timer.init` expects an integer number of ms. Passing a `freq` value

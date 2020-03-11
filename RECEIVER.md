@@ -71,8 +71,7 @@ while True:
 
 #### Common to all classes
 
-Constructor:  
-Args:  
+Constructor args:  
  1. `pin` is a `machine.Pin` instance configured as an input, connected to the
  IR decoder chip.  
  2. `callback` is the user supplied callback.
