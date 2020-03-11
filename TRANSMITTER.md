@@ -40,10 +40,7 @@ hardware gate is required to turn the IR LED on when both the carrier pin and
 the RMT pin are high. A suitable circuit is below.  
 ![Image](images/gate.png)
 
-The transistor type is not critical. A gate could be built with two similarly
-connected N-channel MOSFETS. The 1KΩ resistors would not be required. The
-MOSFETS would require a low RDSon at Vgs == 3.3V. A ZVN4210A seems suitable
-but I haven't tried it.
+The transistor type is not critical.
 
 # 2. Dependencies and installation
 
