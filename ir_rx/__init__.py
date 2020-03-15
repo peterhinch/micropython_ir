@@ -32,6 +32,7 @@ class IR_RX():
     BADADDR = -7
 
     def __init__(self, pin, nedges, tblock, callback, *args):  # Optional args for callback
+        self._pin = pin
         self._nedges = nedges
         self._tblock = tblock
         self.callback = callback
@@ -41,10 +42,9 @@ class IR_RX():
 
         self._times = array('i',  (0 for _ in range(nedges + 1)))  # +1 for overrun
         if platform == 'esp32' or platform == 'esp32_LoBo':  # ESP32 Doesn't support hard IRQ
-            ei = pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING))
+            pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING))
         else:
-            ei = pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING), hard = True)
-        self._eint = ei  # Keep reference??
+            pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING), hard = True)
         self.edge = 0
         self.tim = Timer(-1)  # Sofware timer
         self.cb = self.decode
@@ -68,3 +68,7 @@ class IR_RX():
 
     def error_function(self, func):
         self._errf = func
+
+    def close(self):
+        self._pin.irq(handler = None)
+        self.tim.deinit()

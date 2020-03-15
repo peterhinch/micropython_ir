@@ -37,10 +37,13 @@ which is the driver default. If using a circuit where "off" is required to be
 
 The ESP32 RMT device does not currently support the carrier option. A simple
 hardware gate is required to turn the IR LED on when both the carrier pin and
-the RMT pin are high. A suitable circuit is below.  
+the RMT pin are high. A suitable circuit is below; the transistor type is not
+critical.  
 ![Image](images/gate.png)
 
-The transistor type is not critical.
+This simpler alternative uses MOSFETS, but the device type needs attention. The
+chosen type has a low gate-source threshold voltage and low Rdson.  
+![Image](images/gate_mosfet.png)
 
 # 2. Dependencies and installation
 
@@ -57,7 +60,11 @@ from [this repo](https://github.com/peterhinch/micropython-async).
 ## 2.2 Installation
 
 The transmitter is a Python package. This minimises RAM usage: applications
-only import the device driver for the protocol in use.
+only import the device driver for the protocol in use. Clone the repository to
+the current directory of your PC with:
+```bash
+$ git clone https://github.com/peterhinch/micropython_ir
+```
 
 Copy the following to the target filesystem:
  1. `ir_tx` Directory and contents.

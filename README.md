@@ -6,12 +6,14 @@ require `uasyncio` but are compatible with it, and are designed for standard
 firmware builds.
 
 The receiver is cross platform and has been tested on Pyboard, ESP8266 and
-ESP32. The transmitter driver is compatible with Pyboard (1.x and D series) and
-also (subject to limitations) with ESP32. For the transmitter a Pyboard is
-recommended.
+ESP32.
 
-The transmitter is documented [here](./TRANSMITTER.md) and the receiver is
-[here](./RECEIVER.md).
+#### [Receiver docs](./RECEIVER.md)
+
+The transmitter driver is compatible with Pyboard (1.x and D series) and ESP32.
+ESP8266 is unsupported; it seems incapable of generating the required signals.
+
+#### [Transmitter docs](./TRANSMITTER.md)
 
 # 1. IR communication
 

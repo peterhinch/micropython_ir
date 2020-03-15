@@ -21,25 +21,42 @@ On the WeMos D1 Mini the equivalent pin is D7.
 
 A remote using the NEC protocol is [this one](https://www.adafruit.com/products/389).
 
-# 2. Installation and demo script
+# 2. Installation and demo scripts
 
 The receiver is a Python package. This minimises RAM usage: applications only
-import the device driver for the protocol in use.
-
+import the device driver for the protocol in use. Clone the repository to the
+current directory of your PC with:
+```bash
+$ git clone https://github.com/peterhinch/micropython_ir
+```
 
 Copy the following to the target filesystem:
  1. `ir_rx` Directory and contents.
 
 There are no dependencies.
 
-The demo can be used to characterise IR remotes. It displays the codes returned
-by each button. This can aid in the design of receiver applications. The demo
-prints "running" every 5 seconds and reports any data received from the remote.
+## 2.1 Test scripts
 
+The demo can be used to characterise IR remotes where the protocol is known. It
+displays the codes returned by each button. This can aid in the design of
+receiver applications. The demo prints "running" every 5 seconds and reports
+any data received from the remote.
 ```python
 from ir_rx.test import test
 ```
 Instructions will be displayed at the REPL.
+
+If the protocol in use is unknown, there are two options: trial and error with
+the above script or run the following:
+```python
+from ir_rx.acquire import test
+test()
+```
+This script is under development.
+
+It waits for a single burst from the remote and prints the timing of the pulses
+followed by its best guess at the protocol. It correctly identifies supported
+protocols, but can wrongly identify some unsupported proprietary protocols.
 
 # 3. The driver
 
@@ -92,13 +109,14 @@ The user callback takes the following args:
 Bound variable:  
  1. `verbose=False` If `True` emits debug output.
 
-Method:
- 1. `error_function` Arg: a function taking a single `int` arg. If this is
- specified it will be called if an error occurs. The value corresponds to the
- error code (see below). Typical usage might be to provide some user feedback
- of incorrect reception although beware of occasional triggers by external
- events. In my testing the TSOP4838 produces 200µs pulses on occasion for no
- obvious reason. See [section 4](./RECEIVER.md#4-errors).
+Methods:
+ 1. `error_function` Arg: a function taking a single `int` arg. If specified
+ the function will be called if an error occurs. The arg value corresponds to
+ the error code. Typical usage might be to provide some user feedback of
+ incorrect reception although beware of occasional triggers by external events.
+ In my testing the TSOP4838 produces 200µs pulses on occasion for no obvious
+ reason. See [section 4](./RECEIVER.md#4-errors).
+ 2. `close` No args. Shuts down the pin and timer interrupts.
 
 A function is provided to print errors in human readable form. This may be
 invoked as follows:
