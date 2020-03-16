@@ -21,46 +21,65 @@ class IR_GET(IR_RX):
     def decode(self, _):
         def near(v, target):
             return target * 0.8 < v < target * 1.2
-        nedges = self.edge
-        if nedges < 4:
+        lb = self.edge - 1  # Possible length of burst
+        if lb < 3:
             return  # Noise
         burst = []
-        duration = ticks_diff(self._times[0], self._times[nedges])  # 24892 for RC-5 22205 for RC-6
-        for x in range(nedges - 1):
+        for x in range(lb):
             dt = ticks_diff(self._times[x + 1], self._times[x])
             if x > 0 and dt > 10000:  # Reached gap between repeats
                 break
             burst.append(dt)
+        lb = len(burst)  # Actual length
+        # Duration of pulse train 24892 for RC-5 22205 for RC-6
+        duration = ticks_diff(self._times[lb - 1], self._times[0])
 
         if self.display:
-            detected = False
             for x, e in enumerate(burst):
                 print('{:03d} {:5d}'.format(x, e))
             print()
-            if burst[0] > 5000:
+            # Attempt to determine protocol
+            ok = False  # Protocol not yet found
+            if near(burst[0], 9000) and lb == 67:
                 print('NEC')
-                detected = True
-            elif burst[0] > 2000:  # Sony or Philips RC-6
-                if burst[1] > 750:  # Probably Philips
-                    if min(burst) < 600:
-                        print('Philips RC-6 mode 0')
-                        detected = True
-                else:
-                    lb = len(burst)
-                    try:
-                        nbits = {25:12, 31:15, 41:20}[len(burst)]
-                    except IndexError:
-                        pass
-                    else:
-                        detected = True
-                    if detected:
-                        print('Sony {}bit'.format(nbits))
+                ok = True
 
-            elif burst[0] < 1200:
-                print('Philips RC-5')
-                detected = True
-            if not detected:
-                print('Unknown protocol')
+            if not ok and near(burst[0], 2400) and near(burst[1], 600):  # Maybe Sony
+                try:
+                    nbits = {25:12, 31:15, 41:20}[lb]
+                except KeyError:
+                    pass
+                else:
+                    ok = True
+                    print('Sony {}bit'.format(nbits))
+
+            if not ok and near(burst[0], 889):  # Maybe RC-5
+                if near(duration, 24892) and near(max(burst), 1778):
+                    print('Philps RC-5')
+                    ok = True
+
+            if not ok and near(burst[0], 2666) and near(burst[1], 889):  # RC-6?
+                if near(duration, 22205) and near(burst[1], 889) and near(burst[2], 444):
+                    print('Philips RC-6 mode 0')
+                    ok = True
+
+            if not ok and near(burst[0], 2056) and near(burst[1], 945):
+                if near(duration, 19000):
+                    print('Microsoft MCE edition protocol. Not yet supported.')
+                    # Constant duration, variable burst length, presumably bi-phase
+                    print('Protocol start {} {} Burst length {} duration {}'.format(burst[0], burst[1], lb, duration))
+                    ok = True
+
+            if not ok and near(burst[0], 4500) and near(burst[1], 4500):  # Samsung?
+                print('Unsupported protocol. Samsung?')
+                ok = True
+
+            if not ok and near(burst[0], 3500) and near(burst[1], 1680):  # Panasonic?
+                print('Unsupported protocol. Panasonic?')
+                ok = True
+
+            if not ok:
+                print('Unknown protocol start {} {} Burst length {} duration {}'.format(burst[0], burst[1], lb, duration))
 
             print()
         self.data = burst
@@ -86,14 +105,9 @@ def test():
     print('Waiting for IR data...')
     irg.acquire()
 
-#          RC          Python   Calculated
-# NEC      66          66       66
-# Sony 12: 24       24       26 (2 hdr + 2*(7 data + 5 addr)  RC issues another: detect 26ms gap
-# Sony 15: 75          30
-# Sony 20  n/a         40
+# Yamaha NEC
+# Virgin RC-5
 
-# Yamaha NEC 
-# Pi/Vista MCE RC6 mode 0 Din't receive
-# Panasonic TV recorder RC6 mode 0 Didn't receive
-# Virgin RC-5 Receive OK
-# Samsung TV RC6 mode 0  Didn't receive
+# Samsung Unknown protocol 4576 4472 67 60755
+# Panasonic Unknown protocol 3526 1679 99 54303
+# Vista MCE edition Unknown protocol 2056 945 25 18935
