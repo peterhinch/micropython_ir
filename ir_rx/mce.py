@@ -56,9 +56,8 @@ class MCE(IR_RX):
                 x += 1 + short
 
             self.verbose and print(bin(v))
-            print(bin(v))  # TEST
-            #if not check(v):
-                #raise RuntimeError(self.BADDATA)
+            if not check(v):
+                raise RuntimeError(self.BADDATA)
             val = (v >> 6) & 0x3f
             addr = v & 0xf  # Constant for all buttons on my remote
             ctrl = (v >> 4) & 3
