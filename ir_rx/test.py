@@ -1,5 +1,5 @@
 # test.py Test program for IR remote control decoder
-# Supports Pyboard ESP32 and ESP8266
+# Supports Pyboard, ESP32 and ESP8266
 
 # Author: Peter Hinch
 # Copyright Peter Hinch 2020 Released under the MIT license
@@ -15,6 +15,7 @@ from ir_rx.print_error import print_error  # Optional print of error codes
 from ir_rx.nec import NEC_8, NEC_16
 from ir_rx.sony import SONY_12, SONY_15, SONY_20
 from ir_rx.philips import RC5_IR, RC6_M0
+from ir_rx.mce import MCE
 
 # Define pin according to platform
 if platform == 'pyboard':
@@ -23,7 +24,7 @@ elif platform == 'esp8266':
     freq(160000000)
     p = Pin(13, Pin.IN)
 elif platform == 'esp32' or platform == 'esp32_LoBo':
-    p = Pin(23, Pin.IN)  # was 27
+    p = Pin(23, Pin.IN)
 
 # User callback
 def cb(data, addr, ctrl):
@@ -33,19 +34,22 @@ def cb(data, addr, ctrl):
         print('Data {:02x} Addr {:04x} Ctrl {:02x}'.format(data, addr, ctrl))
 
 def test(proto=0):
-    classes = (NEC_8, NEC_16, SONY_12, SONY_15, SONY_20, RC5_IR, RC6_M0)
+    classes = (NEC_8, NEC_16, SONY_12, SONY_15, SONY_20, RC5_IR, RC6_M0, MCE)
     ir = classes[proto](p, cb)  # Instantiate receiver
     ir.error_function(print_error)  # Show debug information
     #ir.verbose = True
     # A real application would do something here...
-    while True:
-        print('running')
-        time.sleep(5)
-        gc.collect()
+    try:
+        while True:
+            print('running')
+            time.sleep(5)
+            gc.collect()
+    except KeyboardInterrupt:
+        ir.close()
 
 # **** DISPLAY GREETING ****
 s = '''Test for IR receiver. Run:
-from ir_rx import test
+from ir_rx.test import test
 test() for NEC 8 bit protocol,
 test(1) for NEC 16 bit,
 test(2) for Sony SIRC 12 bit,
@@ -53,6 +57,7 @@ test(3) for Sony SIRC 15 bit,
 test(4) for Sony SIRC 20 bit,
 test(5) for Philips RC-5 protocol,
 test(6) for RC6 mode 0.
+test(7) for Microsoft Vista MCE.
 
 Hit ctrl-c to stop, then ctrl-d to soft reset.'''
 

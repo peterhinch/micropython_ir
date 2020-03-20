@@ -1,4 +1,4 @@
-# ir_tx_test.py Test for nonblocking NEC/SONY/RC-5/RC-6 mode 0 IR blaster.
+# ir_tx.test Test for nonblocking NEC/SONY/RC-5/RC-6 mode 0 IR blaster.
 
 # Released under the MIT License (MIT). See LICENSE.
 
@@ -80,7 +80,7 @@ async def main(proto):
 
 # Greeting strings. Common:
 s = '''Test for IR transmitter. Run:
-from ir_tx_test import test
+from ir_tx.test import test
 test() for NEC protocol
 test(1) for Sony SIRC 12 bit
 test(2) for Sony SIRC 15 bit

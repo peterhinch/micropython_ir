@@ -18,35 +18,30 @@ class RC5_IR(IR_RX):
             if not 14 <= nedges <= 28:
                 raise RuntimeError(self.OVERRUN if nedges > 28 else self.BADSTART)
             # Regenerate bitstream
-            bits = 0
+            bits = 1
             bit = 1
-            for x in range(1, nedges):
-                width = ticks_diff(self._times[x], self._times[x - 1])
-                if not 500 < width < 2000:
+            v = 1  # 14 bit bitstream, MSB always 1
+            x = 0
+            while bits < 14:
+                # -1 convert count to index, -1 because we look ahead
+                if x > nedges - 2:
+                    print('Bad block 1 edges', nedges, 'x', x)
                     raise RuntimeError(self.BADBLOCK)
-                for _ in range(1 if width < 1334 else 2):
-                    bits <<= 1
-                    bits |= bit
-                bit ^= 1
-            self.verbose and print(bin(bits))  # Matches inverted scope waveform
-            # Decode Manchester code
-            x = 30
-            while not bits >> x:
-                x -= 1
-            m0 = 1 << x  # Mask MS two bits (always 01)
-            m1 = m0 << 1
-            v = 0  # 14 bit bitstream
-            for _ in range(14):
+                # width is 889/1778 nominal
+                width = ticks_diff(self._times[x + 1], self._times[x])
+                if not 500 < width < 2100:
+                    self.verbose and print('Bad block 3 Width', width, 'x', x)
+                    raise RuntimeError(self.BADBLOCK)
+                short = width < 1334
+                if not short:
+                    bit ^= 1
                 v <<= 1
-                b0 = (bits & m0) > 0
-                b1 = (bits & m1) > 0
-                if b0 == b1:
-                    raise RuntimeError(self.BADBLOCK)
-                v |= b0
-                m0 >>= 2
-                m1 >>= 2
+                v |= bit
+                bits += 1
+                x += 1 + int(short)
+            self.verbose and print(bin(v))
             # Split into fields (val, addr, ctrl)
-            val = (v & 0x3f) | (0x40 if ((v >> 12) & 1) else 0)
+            val = (v & 0x3f) | (0 if ((v >> 12) & 1) else 0x40)  # Correct the polarity of S2
             addr = (v >> 6) & 0x1f
             ctrl = (v >> 11) & 1
 
@@ -54,6 +49,7 @@ class RC5_IR(IR_RX):
             val, addr, ctrl = e.args[0], 0, 0
         # Set up for new data burst and run user callback
         self.do_callback(val, addr, ctrl)
+
 
 class RC6_M0(IR_RX):
     # Even on Pyboard D the 444μs nominal pulses can be recorded as up to 705μs

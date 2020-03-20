@@ -21,12 +21,23 @@ IR communication uses a carrier frequency to pulse the IR source. Modulation
 takes the form of OOK (on-off keying). There are multiple protocols and at
 least three options for carrier frequency: 36, 38 and 40KHz.
 
+In the case of the transmitter the carrier frequency is a runtime parameter:
+any value may be specified. The receiver uses a hardware demodulator which
+should be purchased for the correct frequency. The receiver device driver sees
+the demodulated signal and is hence carrier frequency agnostic.
+
+Remotes transmit an address and a data byte, plus in some cases an extra value.
+The address denotes the physical device being controlled. The data defines the
+button on the remote. Provision usually exists for differentiating between a
+button repeatedly pressed and one which is held down; the mechanism is protocol
+dependent.
+
+# 2. Supported protocols
+
 The drivers support NEC and Sony protocols plus two Philips protocols, namely
-RC-5 and RC-6 mode 0. In the case of the transmitter the carrier frequency is a
-runtime parameter: any value may be specified. The receiver uses a hardware
-demodulator which should be purchased for the correct frequency. The receiver
-device driver sees the demodulated signal and is hence carrier frequency
-agnostic.
+RC-5 and RC-6 mode 0. There is also support for the OrtekMCE protocol used on
+VRC-1100 remotes. These originally supported Microsoft Media Center but can be
+used to control Kodi and (with a suitable receiver) to emulate a PC keyboard.
 
 Examining waveforms from various remote controls it is evident that numerous
 protocols exist. Some are doubtless proprietary and undocumented. The supported
@@ -37,13 +48,7 @@ timing.
 
 A remote using the NEC protocol is [this one](https://www.adafruit.com/products/389).
 
-Remotes transmit an address and a data byte, plus in some cases an extra value.
-The address denotes the physical device being controlled. The data defines the
-button on the remote. Provision usually exists for differentiating between a
-button repeatedly pressed and one which is held down; the mechanism is protocol
-dependent.
-
-# 2. Hardware Requirements
+# 3. Hardware Requirements
 
 These are discussed in detail in the relevant docs; the following provides an
 overview.
@@ -60,5 +65,41 @@ is obviously neither guaranteed nor optimal.
 
 The transmitter requires a Pyboard 1.x (not Lite), a Pyboard D or an ESP32.
 Output is via an IR LED which will need a transistor to provide sufficient
-current. The ESP32 has significant limitations as a transmitter discussed
-[here](./TRANSMITTER.md#52-esp32).
+current. The ESP32 requires an extra transistor to work as a transmitter.
+
+## 3.1 Carrier frequencies
+
+These are as follows. The Samsung and Panasonic remotes appear to use
+proprietary protocols and are not supported by these drivers.
+
+| Protocol  | F KHz | How found     | Support |
+|:---------:|:-----:|:-------------:|:-------:|
+| NEC       | 38    | Measured      | Y       |
+| RC-5 RC-6 | 36    | Spec/measured | Y       |
+| Sony      | 40    | Spec/measured | Y       |
+| MCE       | 38    | Measured      | Y       | 
+| Samsung   | 38    | Measured      | N       |
+| Panasonic | 36.3  | Measured      | N       |
+
+# 4. References
+
+Sources of information about IR protocols.  
+[General information about IR](https://www.sbprojects.net/knowledge/ir/)
+
+The NEC protocol:  
+[altium](http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol)  
+[circuitvalley](http://www.circuitvalley.com/2013/09/nec-protocol-ir-infrared-remote-control.html)
+
+Philips protocols:  
+[RC5](https://en.wikipedia.org/wiki/RC-5)  
+[RC5](https://www.sbprojects.net/knowledge/ir/rc5.php)  
+[RC6](https://www.sbprojects.net/knowledge/ir/rc6.php)
+
+Sony protocol:  
+[SIRC](https://www.sbprojects.net/knowledge/ir/sirc.php)
+
+MCE protocol:  
+[OrtekMCE](http://www.hifi-remote.com/johnsfine/DecodeIR.html#OrtekMCE)
+
+IR decoders (C sourcecode):  
+[in the Linux kernel](https://github.com/torvalds/linux/tree/master/drivers/media/rc)

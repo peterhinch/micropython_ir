@@ -13,7 +13,7 @@ _T_ONE = const(1687)
 class NEC(IR):
 
     def __init__(self, pin, freq=38000, verbose=False):  # NEC specifies 38KHz
-        super().__init__(pin, freq, 68, 50, verbose)
+        super().__init__(pin, freq, 68, 33, verbose)  # Measured duty ratio 33%
 
     def _bit(self, b):
         self.append(_TBURST, _T_ONE if b else _TBURST)

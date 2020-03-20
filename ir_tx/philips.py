@@ -5,19 +5,19 @@
 # Copyright Peter Hinch 2020 Released under the MIT license
 
 from micropython import const
-from sys import platform
 from ir_tx import IR
 
 # Philips RC5 protocol
 _T_RC5 = const(889)  # Time for pulse of carrier
-ermsg = 'ESP32 does not support Philips protocols'
+
+
 class RC5(IR):
 
     def __init__(self, pin, freq=36000, verbose=False):
         super().__init__(pin, freq, 28, 30, verbose)
 
-    def tx(self, addr, data, toggle):
-        d = (data & 0x3f) | ((addr & 0x1f) << 6) | ((data & 0x40) << 6) | ((toggle & 1) << 11)
+    def tx(self, addr, data, toggle):  # Fix RC5X S2 bit polarity
+        d = (data & 0x3f) | ((addr & 0x1f) << 6) | (((data & 0x40) ^ 0x40) << 6) | ((toggle & 1) << 11)
         self.verbose and print(bin(d))
         mask = 0x2000
         while mask:

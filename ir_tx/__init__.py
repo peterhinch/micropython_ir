@@ -18,9 +18,7 @@ import micropython
 
 # micropython.alloc_emergency_exception_buf(100)
 
-# ABC and Pyboard only: ESP32 ignores this value.
-# Duty ratio in carrier off state: if driver is such that 3.3V turns the LED
-# off, set _SPACE = 100
+# Duty ratio in carrier off state.
 _SPACE = const(0)
 # On ESP32 gate hardware design is led_on = rmt and carrier
 
@@ -31,8 +29,11 @@ STOP = const(0)  # End of data
 # carrier on or off. Physical transmission occurs in an ISR context controlled
 # by timer 2 and timer 5. See README.md for details of operation.
 class IR:
+    active_high = True  # Hardware turns IRLED on if pin goes high.
 
     def __init__(self, pin, cfreq, asize, duty, verbose):
+        if not IR.active_high:
+             duty = 100 - duty
         if ESP32:
             self._pwm = PWM(pin[0])  # Continuous 36/38/40KHz carrier
             self._pwm.deinit()
@@ -44,7 +45,7 @@ class IR:
             self._ch = tim.channel(1, Timer.PWM, pin=pin)
             self._ch.pulse_width_percent(_SPACE)  # Turn off IR LED
             # Pyboard: 0 <= pulse_width_percent <= 100
-            self._duty = duty if not _SPACE else (100 - duty)
+            self._duty = duty
             self._tim = Timer(5)  # Timer 5 controls carrier on/off times
         self._tcb = self._cb  # Pre-allocate
         self._arr = array('H', 0 for _ in range(asize))  # on/off times (μs)

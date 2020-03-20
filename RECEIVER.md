@@ -52,11 +52,10 @@ the above script or run the following:
 from ir_rx.acquire import test
 test()
 ```
-This script is under development.
-
-It waits for a single burst from the remote and prints the timing of the pulses
-followed by its best guess at the protocol. It correctly identifies supported
-protocols, but can wrongly identify some unsupported proprietary protocols.
+This script waits for a single burst from the remote and prints the timing of
+the pulses followed by its best guess at the protocol. It correctly identifies
+supported protocols, but can wrongly identify unsupported protocols. The
+behaviour of the script exposed to an unknown protocol is unpredictable.
 
 # 3. The driver
 
@@ -172,7 +171,40 @@ Typical invocation:
 from ir_rx.philips import RC5_IR
 ```
 
-These support the RC-5 and RC-6 mode 0 protocols respectively.
+These support the RC-5 (including RC-5X) and RC-6 mode 0 protocols
+respectively.
+
+#### Microsoft MCE class
+
+`MCE`
+
+Typical invocation:
+```python
+from ir_rx.mce import MCE
+```
+
+I have been unable to locate a definitive specification: the protocol was
+analysed by a mixture of googling and experiment. Behaviour may change if I
+acquire new information. The protocol is known as OrtekMCE and the remote
+control is sold on eBay as VRC-1100.
+
+The remote was designed for Microsoft Media Center and is used to control Kodi
+on boxes such as the Raspberry Pi. With a suitable PC driver it can emulate a
+PC keyboard and mouse. The mouse emulation uses a different protocol: the class
+does not currently support it. Pressing mouse buttons and pad will cause the
+error function (if provided) to be called.
+
+Args passed to the callback comprise 4 bit `addr`, 6 bit `data` and 2 bit `ctrl`
+with the latter having the value 0 for the first message and 2 for the message
+sent on key release. Intermediate messages (where the key is held down) have
+value 1.
+
+There is a 4-bit checksum which is used by default. The algorithm requires an
+initial 'seed' value which my testing proved to be 4. However the only
+[documentation](http://www.hifi-remote.com/johnsfine/DecodeIR.html#OrtekMCE) I
+could find stated that the value should be 3. I implemented this as a class
+variable `MCE.init_cs=4`. This enables it to be changed if some remotes use 3.
+If the value is set to -1 the check will be skipped.
 
 # 4. Errors
 
@@ -248,22 +280,6 @@ CPU times used by `.decode` (not including the user callback) were measured on
 a Pyboard D SF2W at stock frequency. They were: NEC 1ms for normal data, 100μs
 for a repeat code. Philips codes: RC-5 900μs, RC-6 mode 0 5.5ms.
 
-# 7. References
-
-[General information about IR](https://www.sbprojects.net/knowledge/ir/)
-
-The NEC protocol:  
-[altium](http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol)  
-[circuitvalley](http://www.circuitvalley.com/2013/09/nec-protocol-ir-infrared-remote-control.html)
-
-Philips protocols:  
-[RC5](https://en.wikipedia.org/wiki/RC-5)  
-[RC5](https://www.sbprojects.net/knowledge/ir/rc5.php)  
-[RC6](https://www.sbprojects.net/knowledge/ir/rc6.php)
-
-Sony protocol:  
-[SIRC](https://www.sbprojects.net/knowledge/ir/sirc.php)
-
 # Appendix 1 NEC Protocol description
 
 A normal burst comprises exactly 68 edges, the exception being a repeat code
@@ -279,3 +295,18 @@ provide error checking. This also ensures that the number of 1's and 0's in a
 burst is constant, giving a constant burst length of 67.5ms. In extended
 address mode this constancy is lost. The burst length can (by my calculations)
 run to 76.5ms.
+
+# Appendix 2 MCE Protocol
+
+The bitstream comprises a header (2ms mark, 1ms space) followed by 16 bits of
+Manchester encoded data with a bit time of 500μs. Data are encoded  
+```
+ccccddddddppaaaa
+```
+Where `aaaa` is the address, `pp` is the position (toggle) field, `dddddd` is
+data and `cccc` is a checksum. This is calculated by counting the ones in
+`ddddddppaaaa` and adding 4. Data are transmitted LSB first.
+
+The only [doc](http://www.hifi-remote.com/johnsfine/DecodeIR.html#OrtekMCE) I
+could find states that the checksum seed value is 3, but this did not match the
+remote I have.

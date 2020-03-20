@@ -63,9 +63,9 @@ class IR_GET(IR_RX):
                     print('Philips RC-6 mode 0')
                     ok = True
 
-            if not ok and near(burst[0], 2056) and near(burst[1], 945):
+            if not ok and near(burst[0], 2000) and near(burst[1], 1000):
                 if near(duration, 19000):
-                    print('Microsoft MCE edition protocol. Not yet supported.')
+                    print('Microsoft MCE edition protocol.')
                     # Constant duration, variable burst length, presumably bi-phase
                     print('Protocol start {} {} Burst length {} duration {}'.format(burst[0], burst[1], lb, duration))
                     ok = True
@@ -104,10 +104,3 @@ def test():
     irg = IR_GET(pin)
     print('Waiting for IR data...')
     irg.acquire()
-
-# Yamaha NEC
-# Virgin RC-5
-
-# Samsung Unknown protocol 4576 4472 67 60755
-# Panasonic Unknown protocol 3526 1679 99 54303
-# Vista MCE edition Unknown protocol 2056 945 25 18935
