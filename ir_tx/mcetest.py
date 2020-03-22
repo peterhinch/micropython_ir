@@ -36,8 +36,7 @@ class Rbutton:
         self.stop = False
 
     def cfunc(self):  # Button push: send data and set up for repeats
-        print('start')
-        self.irb.transmit(self.addr, self.data, _FIRST)
+        self.irb.transmit(self.addr, self.data, _FIRST, True)
         self.tim.trigger(_REP_DELAY)
 
     def ofunc(self):  # Button release: cancel repeat timer
@@ -48,19 +47,19 @@ class Rbutton:
         if self.stop:  # Button has been released: send last message
             self.stop = False
             self.tim.stop()  # Not strictly necessary
-            self.irb.transmit(self.addr, self.data, _END)
-            print('stop')
+            self.irb.transmit(self.addr, self.data, _END, True)
         else:
-            print('rep')
             self.tim.trigger(_REP_DELAY)
-            self.irb.transmit(self.addr, self.data, _REP)
+            self.irb.transmit(self.addr, self.data, _REP, True)
 
 async def main():
     if ESP32:  # Pins for IR LED gate
         pin = (Pin(23, Pin.OUT, value = 0), Pin(21, Pin.OUT, value = 0))
     else:
         pin = Pin('X1')
-    irb = MCE(pin, verbose=True)
+    irb = MCE(pin)  # verbose=True)
+    # Uncomment the following to print transmit timing
+    # irb.timeit = True
 
     b = []  # Rbutton instances
     px3 = Pin(18, Pin.IN, Pin.PULL_UP) if ESP32 else Pin('X3', Pin.IN, Pin.PULL_UP)

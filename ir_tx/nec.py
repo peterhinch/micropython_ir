@@ -11,6 +11,7 @@ _TBURST = const(563)
 _T_ONE = const(1687)
 
 class NEC(IR):
+    valid = (0xffff, 0xff, 0)  # Max addr, data, toggle
 
     def __init__(self, pin, freq=38000, verbose=False):  # NEC specifies 38KHz
         super().__init__(pin, freq, 68, 33, verbose)  # Measured duty ratio 33%

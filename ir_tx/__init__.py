@@ -14,12 +14,10 @@ else:
 
 from micropython import const
 from array import array
-import micropython
-
+from time import ticks_us, ticks_diff
+# import micropython
 # micropython.alloc_emergency_exception_buf(100)
 
-# Duty ratio in carrier off state.
-_SPACE = const(0)
 # On ESP32 gate hardware design is led_on = rmt and carrier
 
 # Shared by NEC
@@ -27,13 +25,20 @@ STOP = const(0)  # End of data
 
 # IR abstract base class. Array holds periods in μs between toggling 36/38KHz
 # carrier on or off. Physical transmission occurs in an ISR context controlled
-# by timer 2 and timer 5. See README.md for details of operation.
+# by timer 2 and timer 5. See TRANSMITTER.md for details of operation.
 class IR:
-    active_high = True  # Hardware turns IRLED on if pin goes high.
+    _active_high = True  # Hardware turns IRLED on if pin goes high.
+    _space = 0  # Duty ratio that causes IRLED to be off
+    timeit = False  # Print timing info
+
+    @classmethod
+    def active_low(cls):
+        if ESP32:
+            raise ValueError('Cannot set active low on ESP32')
+        cls._active_high = False
+        cls._space = 100
 
     def __init__(self, pin, cfreq, asize, duty, verbose):
-        if not IR.active_high:
-             duty = 100 - duty
         if ESP32:
             self._pwm = PWM(pin[0])  # Continuous 36/38/40KHz carrier
             self._pwm.deinit()
@@ -41,9 +46,11 @@ class IR:
             self._pwm.init(freq=cfreq, duty=round(duty * 10.23))
             self._rmt = RMT(0, pin=pin[1], clock_div=80)  # 1μs resolution
         else:  # Pyboard
+            if not IR._active_high:
+                duty = 100 - duty
             tim = Timer(2, freq=cfreq)  # Timer 2/pin produces 36/38/40KHz carrier
             self._ch = tim.channel(1, Timer.PWM, pin=pin)
-            self._ch.pulse_width_percent(_SPACE)  # Turn off IR LED
+            self._ch.pulse_width_percent(self._space)  # Turn off IR LED
             # Pyboard: 0 <= pulse_width_percent <= 100
             self._duty = duty
             self._tim = Timer(5)  # Timer 5 controls carrier on/off times
@@ -60,19 +67,30 @@ class IR:
         p = self.aptr
         v = self._arr[p]
         if v == STOP:
-            self._ch.pulse_width_percent(_SPACE)  # Turn off IR LED.
+            self._ch.pulse_width_percent(self._space)  # Turn off IR LED.
             return
-        self._ch.pulse_width_percent(_SPACE if p & 1 else self._duty)
+        self._ch.pulse_width_percent(self._space if p & 1 else self._duty)
         self._tim.init(prescaler=84, period=v, callback=self._tcb)
         self.aptr += 1
 
     # Public interface
     # Before populating array, zero pointer, set notional carrier state (off).
-    def transmit(self, addr, data, toggle=0):  # NEC: toggle is unused
+    def transmit(self, addr, data, toggle=0, validate=False):  # NEC: toggle is unused
+        t = ticks_us()
+        if validate:
+            if addr > self.valid[0] or addr < 0:
+                raise ValueError('Address out of range', addr)
+            if data > self.valid[1] or data < 0:
+                raise ValueError('Data out of range', data)
+            if toggle > self.valid[2] or toggle < 0:
+                raise ValueError('Toggle out of range', toggle)
         self.aptr = 0  # Inital conditions for tx: index into array
         self.carrier = False
         self.tx(addr, data, toggle)  # Subclass populates ._arr
         self.trigger()  # Initiate transmission
+        if self.timeit:
+            dt = ticks_diff(ticks_us(), t)
+            print('Time = {}μs'.format(dt))
 
     # Subclass interface
     def trigger(self):  # Used by NEC to initiate a repeat frame
@@ -95,3 +113,16 @@ class IR:
         self.verbose and print('add', t)
         # .carrier unaffected
         self._arr[self.aptr - 1] += t
+
+
+# Given an iterable (e.g. list or tuple) of times, emit it as an IR stream.
+class Player(IR):
+
+    def __init__(self, pin, freq=38000, verbose=False):  # NEC specifies 38KHz
+        super().__init__(pin, freq, 68, 33, verbose)  # Measured duty ratio 33%
+
+    def play(self, lst):
+        for x, t in enumerate(lst):
+            self._arr[x] = t
+        self.aptr = x + 1
+        self.trigger()

@@ -20,20 +20,24 @@ from ir_tx.philips import RC5, RC6_M0
 
 loop = asyncio.get_event_loop()
 
+# If button is held down normal behaviour is to retransmit
+# but most NEC models send a REPEAT code
 class Rbutton:
     toggle = 1  # toggle is ignored in NEC mode
-    def __init__(self, irb, pin, addr, data, rep_code=False):
+    def __init__(self, irb, pin, addr, data, proto):
         self.irb = irb
         self.sw = Switch(pin)
         self.addr = addr
         self.data = data
-        self.rep_code = rep_code
+        self.proto = proto
+
         self.sw.close_func(self.cfunc)
         self.sw.open_func(self.ofunc)
         self.tim = Delay_ms(self.repeat)
 
     def cfunc(self):  # Button push: send data
-        self.irb.transmit(self.addr, self.data, Rbutton.toggle)
+        tog = 0 if self.proto < 3 else Rbutton.toggle  # NEC, sony 12, 15: toggle==0
+        self.irb.transmit(self.addr, self.data, tog, True)  # Test validation
         # Auto repeat. The Sony protocol specifies 45ms but this is tight.
         # In 20 bit mode a data burst can be upto 39ms long.
         self.tim.trigger(108)
@@ -46,28 +50,28 @@ class Rbutton:
         await asyncio.sleep(0)  # Let timer stop before retriggering
         if not self.sw():  # Button is still pressed: retrigger
             self.tim.trigger(108)
-            if self.rep_code:
+            if self.proto == 0:
                 self.irb.repeat()  # NEC special case: send REPEAT code
             else:
-                self.irb.transmit(self.addr, self.data, Rbutton.toggle)
+                tog = 0 if self.proto < 3 else Rbutton.toggle  # NEC, sony 12, 15: toggle==0
+                self.irb.transmit(self.addr, self.data, tog, True)  # Test validation
 
 async def main(proto):
-    # Test uses a 38KHz carrier. Some Philips systems use 36KHz.
-    # If button is held down normal behaviour is to retransmit
-    # but most NEC models send a REPEAT code
-    rep_code = proto == 0  # Rbutton constructor requires False for RC-X. NEC protocol only.
+    # Test uses a 38KHz carrier.
     if ESP32:  # Pins for IR LED gate
         pin = (Pin(23, Pin.OUT, value = 0), Pin(21, Pin.OUT, value = 0))
     else:
         pin = Pin('X1')
     classes = (NEC, SONY_12, SONY_15, SONY_20, RC5, RC6_M0)
     irb = classes[proto](pin, 38000)  # My decoder chip is 38KHz
+    # Uncomment the following to print transmit timing
+    # irb.timeit = True
 
     b = []  # Rbutton instances
     px3 = Pin(18, Pin.IN, Pin.PULL_UP) if ESP32 else Pin('X3', Pin.IN, Pin.PULL_UP)
     px4 = Pin(19, Pin.IN, Pin.PULL_UP) if ESP32 else Pin('X4', Pin.IN, Pin.PULL_UP)
-    b.append(Rbutton(irb, px3, 0x1, 0x7, rep_code))
-    b.append(Rbutton(irb, px4, 0x10, 0xb, rep_code))
+    b.append(Rbutton(irb, px3, 0x1, 0x7, proto))
+    b.append(Rbutton(irb, px4, 0x10, 0xb, proto))
     if ESP32:
         while True:
             print('Running')

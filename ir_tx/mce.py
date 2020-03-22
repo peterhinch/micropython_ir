@@ -13,6 +13,7 @@ _TBIT = const(500)  # Time (μs) for pulse of carrier
 
 
 class MCE(IR):
+    valid = (0xf, 0x3f, 3)  # Max addr, data, toggle
     init_cs = 4  # http://www.hifi-remote.com/johnsfine/DecodeIR.html#OrtekMCE says 3
 
     def __init__(self, pin, freq=38000, verbose=False):

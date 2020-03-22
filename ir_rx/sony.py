@@ -37,12 +37,11 @@ class SONY_ABC(IR_RX):  # Abstract base class
             val = 0  # Data received, LSB 1st
             x = 2
             bit = 1
-            while x < nedges - 2:
+            while x <= nedges - 2:
                 if ticks_diff(self._times[x + 1], self._times[x]) > 900:
                     val |= bit
                 bit <<= 1
                 x += 2
-
             cmd = val & 0x7f  # 7 bit command
             val >>= 7
             if nedges < 42:

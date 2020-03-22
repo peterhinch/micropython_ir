@@ -55,7 +55,8 @@ test()
 This script waits for a single burst from the remote and prints the timing of
 the pulses followed by its best guess at the protocol. It correctly identifies
 supported protocols, but can wrongly identify unsupported protocols. The
-behaviour of the script exposed to an unknown protocol is unpredictable.
+report produced by the script exposed to an unknown protocol is unpredictable.
+The `test()` function returns a list of the mark and space periods (in μs).
 
 # 3. The driver
 
@@ -279,6 +280,12 @@ are set by the subclasses. The `.decode` method is provided in the subclass.
 CPU times used by `.decode` (not including the user callback) were measured on
 a Pyboard D SF2W at stock frequency. They were: NEC 1ms for normal data, 100μs
 for a repeat code. Philips codes: RC-5 900μs, RC-6 mode 0 5.5ms.
+
+# 7. Unsupported protocols
+
+It is possible to capture an IR burst from a remote and to re-create it using
+the transmitter. This has limitations and is discussed in detail in
+[the transmitter doc](./TRANSMITTER.md#5-unsupported-protocols).
 
 # Appendix 1 NEC Protocol description
 

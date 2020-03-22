@@ -32,14 +32,17 @@ class SONY_ABC(IR):
 
 # Sony specifies 40KHz
 class SONY_12(SONY_ABC):
+    valid = (0x1f, 0x7f, 0)  # Max addr, data, toggle
     def __init__(self, pin, freq=40000, verbose=False):
         super().__init__(pin, 12, freq, verbose)
 
 class SONY_15(SONY_ABC):
+    valid = (0xff, 0x7f, 0)  # Max addr, data, toggle
     def __init__(self, pin, freq=40000, verbose=False):
         super().__init__(pin, 15, freq, verbose)
 
 class SONY_20(SONY_ABC):
+    valid = (0x1f, 0x7f, 0xff)  # Max addr, data, toggle
     def __init__(self, pin, freq=40000, verbose=False):
         super().__init__(pin, 20, freq, verbose)
 

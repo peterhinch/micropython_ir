@@ -103,4 +103,4 @@ def test():
         pin = Pin(23, Pin.IN)
     irg = IR_GET(pin)
     print('Waiting for IR data...')
-    irg.acquire()
+    return irg.acquire()
