@@ -85,6 +85,22 @@ It implements a class for each supported protocol, namely `NEC`, `SONY_12`,
 common abstract base class in `__init__.py`. The application instantiates the
 appropriate class and calls the `transmit` method to send data.
 
+Basic usage on a Pyboard:
+```python
+from machine import Pin
+from ir_tx.nec import NEC
+nec = NEC(Pin('X1'))
+nec.transmit(1, 2)  # address == 1, data == 2
+```
+Basic usage on ESP32:
+```python
+from machine import Pin
+from ir_tx.nec import NEC
+pins = (Pin(23, Pin.OUT, value = 0), Pin(21, Pin.OUT, value = 0))
+nec = NEC(pins)
+nec.transmit(1, 2)  # address == 1, data == 2
+```
+
 #### Common to all classes
 
 Constructor args:  

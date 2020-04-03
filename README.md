@@ -8,6 +8,13 @@ firmware builds.
 The receiver is cross platform and has been tested on Pyboard, ESP8266 and
 ESP32.
 
+In a typical use case the receiver is employed at the REPL to sniff the address
+and data values associated with buttons on a remote control. The transmitter is
+then used in an application to send those codes, emulating the remote control.
+
+Other use cases involve running the receiver in an application. This enables an
+IR remote to control a device such as a robot.
+
 #### [Receiver docs](./RECEIVER.md)
 
 The transmitter driver is compatible with Pyboard (1.x and D series) and ESP32.
