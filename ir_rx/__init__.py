@@ -4,7 +4,6 @@
 # Author: Peter Hinch
 # Copyright Peter Hinch 2020 Released under the MIT license
 
-from sys import platform
 from machine import Timer, Pin
 from array import array
 from utime import ticks_us
@@ -41,10 +40,7 @@ class IR_RX():
         self.verbose = False
 
         self._times = array('i',  (0 for _ in range(nedges + 1)))  # +1 for overrun
-        if platform == 'esp32' or platform == 'esp32_LoBo':  # ESP32 Doesn't support hard IRQ
-            pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING))
-        else:
-            pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING), hard = True)
+        pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING))
         self.edge = 0
         self.tim = Timer(-1)  # Sofware timer
         self.cb = self.decode
