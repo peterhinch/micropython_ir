@@ -40,11 +40,8 @@ class IR:
 
     def __init__(self, pin, cfreq, asize, duty, verbose):
         if ESP32:
-            self._pwm = PWM(pin[0])  # Continuous 36/38/40KHz carrier
-            self._pwm.deinit()
-            # ESP32: 0 <= duty <= 1023
-            self._pwm.init(freq=cfreq, duty=round(duty * 10.23))
-            self._rmt = RMT(0, pin=pin[1], clock_div=80)  # 1μs resolution
+            self._rmt = RMT(0, pin=pin, clock_div=80, carrier_freq=cfreq,
+                            carrier_duty_percent=duty)  # 1μs resolution
         else:  # Pyboard
             if not IR._active_high:
                 duty = 100 - duty

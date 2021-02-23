@@ -12,7 +12,8 @@ if ESP32:
 else:
     from pyb import Pin, LED
 import uasyncio as asyncio
-from aswitch import Switch, Delay_ms
+from primitives.switch import Switch
+from primitives.delay_ms import Delay_ms
 # Import all implemented classes
 from ir_tx.nec import NEC
 from ir_tx.sony import SONY_12, SONY_15, SONY_20
@@ -59,7 +60,7 @@ class Rbutton:
 async def main(proto):
     # Test uses a 38KHz carrier.
     if ESP32:  # Pins for IR LED gate
-        pin = (Pin(23, Pin.OUT, value = 0), Pin(21, Pin.OUT, value = 0))
+        pin = Pin(23, Pin.OUT, value = 0)
     else:
         pin = Pin('X1')
     classes = (NEC, SONY_12, SONY_15, SONY_20, RC5, RC6_M0)
@@ -101,7 +102,7 @@ Ground pin X4 to send addr 0x10 data 0x0b.'''
 
 # ESP32
 sesp = '''
-IR LED gate on pins 23, 21
+IR LED gate on pin 23
 Ground pin 18 to send addr 1 data 7
 Ground pin 19 to send addr 0x10 data 0x0b.'''
 
