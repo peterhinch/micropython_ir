@@ -1,14 +1,17 @@
 # __init__.py Nonblocking IR blaster
-# Runs on Pyboard D or Pyboard 1.x (not Pyboard Lite) and ESP32
+# Runs on Pyboard D or Pyboard 1.x (not Pyboard Lite), ESP32 and RP2
 
 # Released under the MIT License (MIT). See LICENSE.
 
-# Copyright (c) 2020 Peter Hinch
+# Copyright (c) 2020-2021 Peter Hinch
 from sys import platform
 ESP32 = platform == 'esp32'  # Loboris not supported owing to RMT
+RP2 = platform == 'rp2'
 if ESP32:
     from machine import Pin, PWM
     from esp32 import RMT
+elif RP2:
+    from .rp2_rmt import RP2_RMT
 else:
     from pyb import Pin, Timer  # Pyboard does not support machine.PWM
 
@@ -18,7 +21,6 @@ from time import ticks_us, ticks_diff
 # import micropython
 # micropython.alloc_emergency_exception_buf(100)
 
-# On ESP32 gate hardware design is led_on = rmt and carrier
 
 # Shared by NEC
 STOP = const(0)  # End of data
@@ -42,6 +44,8 @@ class IR:
         if ESP32:
             self._rmt = RMT(0, pin=pin, clock_div=80, carrier_freq=cfreq,
                             carrier_duty_percent=duty)  # 1μs resolution
+        elif RP2:  # PIO-based RMT-like device
+            self._rmt = RP2_RMT(pin_pulse=None, carrier=(pin, cfreq, duty))  # 1μs resolution
         else:  # Pyboard
             if not IR._active_high:
                 duty = 100 - duty
@@ -93,6 +97,9 @@ class IR:
     def trigger(self):  # Used by NEC to initiate a repeat frame
         if ESP32:
             self._rmt.write_pulses(tuple(self._mva[0 : self.aptr]), start = 1)
+        elif RP2:
+            self.append(STOP)
+            self._rmt.send(self._arr)
         else:
             self.append(STOP)
             self.aptr = 0  # Reset pointer

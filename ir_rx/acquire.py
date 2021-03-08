@@ -101,6 +101,8 @@ def test():
         pin = Pin(13, Pin.IN)
     elif platform == 'esp32' or platform == 'esp32_LoBo':
         pin = Pin(23, Pin.IN)
+    elif platform == 'rp2':
+        pin = Pin(16, Pin.IN)
     irg = IR_GET(pin)
     print('Waiting for IR data...')
     return irg.acquire()

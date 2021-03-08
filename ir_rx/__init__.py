@@ -2,7 +2,7 @@
 # IR_RX abstract base class for IR receivers.
 
 # Author: Peter Hinch
-# Copyright Peter Hinch 2020 Released under the MIT license
+# Copyright Peter Hinch 2020-2021 Released under the MIT license
 
 from machine import Timer, Pin
 from array import array

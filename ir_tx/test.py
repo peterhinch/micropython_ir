@@ -7,7 +7,9 @@
 # Implements a 2-button remote control on a Pyboard with auto repeat.
 from sys import platform
 ESP32 = platform == 'esp32'
-if ESP32:
+RP2 = platform == 'rp2'
+PYBOARD = platform == 'pyboard'
+if ESP32 or RP2:
     from machine import Pin
 else:
     from pyb import Pin, LED
@@ -61,6 +63,8 @@ async def main(proto):
     # Test uses a 38KHz carrier.
     if ESP32:  # Pins for IR LED gate
         pin = Pin(23, Pin.OUT, value = 0)
+    elif RP2:
+        pin = Pin(17, Pin.OUT, value = 0)
     else:
         pin = Pin('X1')
     classes = (NEC, SONY_12, SONY_15, SONY_20, RC5, RC6_M0)
@@ -69,14 +73,19 @@ async def main(proto):
     # irb.timeit = True
 
     b = []  # Rbutton instances
-    px3 = Pin(18, Pin.IN, Pin.PULL_UP) if ESP32 else Pin('X3', Pin.IN, Pin.PULL_UP)
-    px4 = Pin(19, Pin.IN, Pin.PULL_UP) if ESP32 else Pin('X4', Pin.IN, Pin.PULL_UP)
+    px3 = Pin('X3', Pin.IN, Pin.PULL_UP) if PYBOARD else Pin(18, Pin.IN, Pin.PULL_UP)
+    px4 = Pin('X4', Pin.IN, Pin.PULL_UP) if PYBOARD else Pin(19, Pin.IN, Pin.PULL_UP)
     b.append(Rbutton(irb, px3, 0x1, 0x7, proto))
     b.append(Rbutton(irb, px4, 0x10, 0xb, proto))
     if ESP32:
         while True:
             print('Running')
             await asyncio.sleep(5)
+    elif RP2:
+        led = Pin(25, Pin.OUT)
+        while True:
+            await asyncio.sleep_ms(500)  # Obligatory flashing LED.
+            led(not led())
     else:
         led = LED(1)
         while True:
@@ -106,7 +115,18 @@ IR LED gate on pin 23
 Ground pin 18 to send addr 1 data 7
 Ground pin 19 to send addr 0x10 data 0x0b.'''
 
-print(''.join((s, sesp)) if ESP32 else ''.join((s, spb)))
+# RP2
+srp2 = '''
+IR LED gate on pin 17
+Ground pin 18 to send addr 1 data 7
+Ground pin 19 to send addr 0x10 data 0x0b.'''
+
+if ESP32:
+    print(''.join((s, sesp)))
+elif RP2:
+    print(''.join((s, srp2)))
+else:
+    print(''.join((s, spb)))
 
 def test(proto=0):
     loop.run_until_complete(main(proto))

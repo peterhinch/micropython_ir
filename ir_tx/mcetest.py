@@ -53,10 +53,7 @@ class Rbutton:
             self.irb.transmit(self.addr, self.data, _REP, True)
 
 async def main():
-    if ESP32:  # Pins for IR LED gate
-        pin = (Pin(23, Pin.OUT, value = 0), Pin(21, Pin.OUT, value = 0))
-    else:
-        pin = Pin('X1')
+    pin = Pin(23, Pin.OUT, value = 0) if ESP32 else Pin('X1')
     irb = MCE(pin)  # verbose=True)
     # Uncomment the following to print transmit timing
     # irb.timeit = True

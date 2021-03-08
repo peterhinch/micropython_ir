@@ -5,8 +5,8 @@ a driver for IR "blaster" apps. The device drivers are nonblocking. They do not
 require `uasyncio` but are compatible with it, and are designed for standard
 firmware builds.
 
-The receiver is cross platform and has been tested on Pyboard, ESP8266 and
-ESP32.
+The receiver is cross platform and has been tested on Pyboard, ESP8266, ESP32
+and Raspberry Pi Pico.
 
 In a typical use case the receiver is employed at the REPL to sniff the address
 and data values associated with buttons on a remote control. The transmitter is
@@ -90,20 +90,22 @@ proprietary protocols and are not supported by these drivers.
 
 # 4. References
 
-Sources of information about IR protocols.  
+Sources of information about IR protocols. The `sbprojects.net` site is an
+excellent resource.  
 [General information about IR](https://www.sbprojects.net/knowledge/ir/)
 
 The NEC protocol:  
 [altium](http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol)  
 [circuitvalley](http://www.circuitvalley.com/2013/09/nec-protocol-ir-infrared-remote-control.html)
+[sbprojects.net](https://www.sbprojects.net/knowledge/ir/nec.php)
 
 Philips protocols:  
-[RC5](https://en.wikipedia.org/wiki/RC-5)  
-[RC5](https://www.sbprojects.net/knowledge/ir/rc5.php)  
-[RC6](https://www.sbprojects.net/knowledge/ir/rc6.php)
+[RC5 Wikipedia](https://en.wikipedia.org/wiki/RC-5)  
+[RC5 sbprojects.net](https://www.sbprojects.net/knowledge/ir/rc5.php)  
+[RC6 sbprojects.net](https://www.sbprojects.net/knowledge/ir/rc6.php)
 
 Sony protocol:  
-[SIRC](https://www.sbprojects.net/knowledge/ir/sirc.php)
+[SIRC sbprojects.net](https://www.sbprojects.net/knowledge/ir/sirc.php)
 
 MCE protocol:  
 [OrtekMCE](http://www.hifi-remote.com/johnsfine/DecodeIR.html#OrtekMCE)

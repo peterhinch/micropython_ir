@@ -16,6 +16,12 @@ are arbitrary: X3 and X4 are used. The driver uses timers 2 and 5.
 On ESP32 the demo uses pin 23 for IR output and pins 18 and 19 for pushbuttons.
 These pins may be changed. The only device resource used is `RMT(0)`.
 
+On Raspberry Pi Pico the demo uses pin 17 for IR output and pins 18 and 19 for
+pushbuttons. These pins may be changed. The driver uses the PIO to emulate a
+device similar to the ESP32 RMT. The device driver is
+[documented here](./RP2_RMT.md); this is for experimenters and those wanting to
+use the library in conjunction with their own PIO assembler code.
+
 ## 1.1 Pyboard Wiring
 
 I use the following circuit which delivers just under 40mA to the diode. R2 may
@@ -80,7 +86,8 @@ Instructions will be displayed at the REPL.
 
 # 3. The driver
 
-This is specific to Pyboard D, Pyboard 1.x (not Lite) and ESP32.
+This is specific to Pyboard D, Pyboard 1.x (not Lite), ESP32 and Raspberry Pi
+Pico (RP2 architecture chip).
 
 It implements a class for each supported protocol, namely `NEC`, `SONY_12`,
 `SONY_15`, `SONY_20`, `RC5` and `RC6_M0`.  Each class is subclassed from a
@@ -99,6 +106,13 @@ Basic usage on ESP32:
 from machine import Pin
 from ir_tx.nec import NEC
 nec = NEC(Pin(23, Pin.OUT, value = 0))
+nec.transmit(1, 2)  # address == 1, data == 2
+```
+Basic usage on Pico:
+```python
+from machine import Pin
+from ir_tx.nec import NEC
+nec = NEC(Pin(17, Pin.OUT, value = 0))
 nec.transmit(1, 2)  # address == 1, data == 2
 ```
 

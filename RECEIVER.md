@@ -15,6 +15,10 @@ driver design ensures operation regardless of sense.
 In my testing a 38KHz demodulator worked with 36KHz and 40KHz remotes, but this
 is obviously neither guaranteed nor optimal.
 
+The TSOP4838 can run from 3.3V or 5V supplies. The former should be used on
+non-5V compliant hosts such as ESP32 and Raspberry Pi Pico and is fine on 5V
+compliant hosts too.
+
 The pin used to connect the decoder chip to the target is arbitrary. The test
 program assumes pin X3 on the Pyboard, pin 23 on ESP32 and pin 13 on ESP8266.
 On the WeMos D1 Mini the equivalent pin is D7.
