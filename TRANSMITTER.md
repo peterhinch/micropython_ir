@@ -47,6 +47,12 @@ updated to use it. The same circuits as above may be used to connect to pin 23
 available on the ESP32 `RMT` object, so any alternative circuit must illuminate
 the LED if the pin state is high.
 
+## 1.3 RP2 Wiring
+
+There is no `active_high` option so the circuit  must illuminate the LED if the
+pin state is high, as per the above drivers. Test programs use pin 17, but this
+can be reassigned.
+
 # 2. Dependencies and installation
 
 ## 2.1 Dependencies

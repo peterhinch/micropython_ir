@@ -15,6 +15,14 @@ then used in an application to send those codes, emulating the remote control.
 Other use cases involve running the receiver in an application. This enables an
 IR remote to control a device such as a robot.
 
+## Raspberry Pi Pico note
+
+Early firmware has [this issue](https://github.com/micropython/micropython/issues/6866)
+affecting USB communication with some PC's. It particularly affects code which
+issues `print()` only occasionally: the application appears to have failed. The
+missing messages appear when you press a key. Hopefully this will be fixed soon
+(note dated 8th March 2021).
+
 #### [Receiver docs](./RECEIVER.md)
 
 The transmitter driver is compatible with Pyboard (1.x and D series) and ESP32.
