@@ -18,10 +18,8 @@ IR remote to control a device such as a robot.
 ## Raspberry Pi Pico note
 
 Early firmware has [this issue](https://github.com/micropython/micropython/issues/6866)
-affecting USB communication with some PC's. It particularly affects code which
-issues `print()` only occasionally: the application appears to have failed. The
-missing messages appear when you press a key. Hopefully this will be fixed soon
-(note dated 8th March 2021).
+affecting USB communication with some PC's. This is now fixed. Please ensure
+you are using up to date firmware.
 
 #### [Receiver docs](./RECEIVER.md)
 
