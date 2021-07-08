@@ -22,13 +22,13 @@ compliant hosts too.
 The pin used to connect the decoder chip to the target is arbitrary. The test
 program `acquire.py` uses the following pins by default:
 
-| Host    | Pin |
-|:-------:|:---:|
-| Pyboard | X3  |
-| ESP32   | 23  |
-| ESP8266 | 13  |
-| D1 Mini | D7  | WeMos naming convention for pin 13.
-| Pico    | 16  |
+| Host    | Pin | Notes |
+|:-------:|:---:|:-----:|
+| Pyboard | X3  |  |
+| ESP32   | 23  |  |
+| ESP8266 | 13  |  |
+| D1 Mini | D7  | WeMos name for pin 13. |
+| Pico    | 16  |  |
 
 A remote using the NEC protocol is [this one](https://www.adafruit.com/products/389).
 
