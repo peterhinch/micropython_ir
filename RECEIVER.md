@@ -20,8 +20,15 @@ non-5V compliant hosts such as ESP32 and Raspberry Pi Pico and is fine on 5V
 compliant hosts too.
 
 The pin used to connect the decoder chip to the target is arbitrary. The test
-program assumes pin X3 on the Pyboard, pin 23 on ESP32 and pin 13 on ESP8266.
-On the WeMos D1 Mini the equivalent pin is D7.
+program `acquire.py` uses the following pins by default:
+
+| Host    | Pin |
+|:-------:|:---:|
+| Pyboard | X3  |
+| ESP32   | 23  |
+| ESP8266 | 13  |
+| D1 Mini | D7  | WeMos naming convention for pin 13.
+| Pico    | 16  |
 
 A remote using the NEC protocol is [this one](https://www.adafruit.com/products/389).
 
