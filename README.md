@@ -13,7 +13,8 @@ and data values associated with buttons on a remote control. The transmitter is
 then used in an application to send those codes, emulating the remote control.
 
 Other use cases involve running the receiver in an application. This enables an
-IR remote to control a device such as a robot.
+IR remote to control a device such as a robot. This may be problematic on some
+platforms. Please see [section 4](./README.md#4-receiver-limitations).
 
 ## Raspberry Pi Pico note
 
@@ -94,7 +95,15 @@ proprietary protocols and are not supported by these drivers.
 | Samsung   | 38    | Measured      | N       |
 | Panasonic | 36.3  | Measured      | N       |
 
-# 4. References
+# 4. Receiver limitations
+
+The receiver uses a pin interrupt and depends on a quick response to a state
+change on the pin. This is guaranteed on platforms which support hard IRQ's
+such as the Pyboard and the RP4 Pico. The ESP32 and ESP8266 only support soft
+IRQ's. This means that, if code such as WiFi communication is running
+concurrently, reliable reception may be problematic.
+
+# 5. References
 
 Sources of information about IR protocols. The `sbprojects.net` site is an
 excellent resource.  
