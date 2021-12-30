@@ -59,7 +59,7 @@ can be reassigned.
 
 The device driver has no dependencies.
 
-On ESP32 a firmware version >= V1.14 is required. The Loboris port is not
+On ESP32 a firmware version >= V1.17 is required. The Loboris port is not
 supported owing to the need for the RMT device and other issues.
 
 The demo program uses `uasyncio` primitives from
