@@ -42,8 +42,8 @@ class IR:
 
     def __init__(self, pin, cfreq, asize, duty, verbose):
         if ESP32:
-            self._rmt = RMT(0, pin=pin, clock_div=80, carrier_freq=cfreq,
-                            carrier_duty_percent=duty)  # 1μs resolution
+            self._rmt = RMT(0, pin=pin, clock_div=80, tx_carrier = (cfreq, duty, 1))
+            # 1μs resolution
         elif RP2:  # PIO-based RMT-like device
             self._rmt = RP2_RMT(pin_pulse=None, carrier=(pin, cfreq, duty))  # 1μs resolution
         else:  # Pyboard
@@ -96,7 +96,7 @@ class IR:
     # Subclass interface
     def trigger(self):  # Used by NEC to initiate a repeat frame
         if ESP32:
-            self._rmt.write_pulses(tuple(self._mva[0 : self.aptr]), start = 1)
+            self._rmt.write_pulses(tuple(self._mva[0 : self.aptr]))
         elif RP2:
             self.append(STOP)
             self._rmt.send(self._arr)
