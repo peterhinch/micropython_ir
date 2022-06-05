@@ -82,10 +82,13 @@ class RP2_RMT:
             if d == 0:
                 break
         if check:
-            # Discard any trailing mark which would leave carrier on.
+            # Pulse train must end with a space otherwise we leave carrier on.
+            # So, if it ends with a mark, append a space. Note __init__.py
+            # ensures that there is room in array.
             if (x & 1):
-                x -= 1
-                ar[x] = 0
+                ar[x] = 1  # space. Duration doesn't matter.
+                x += 1
+                ar[x] = 0  # STOP
         self.icm = x  # index of 1st STOP
         mv = memoryview(ar)
         n = min(x, 4)  # Fill FIFO if there are enough data points.

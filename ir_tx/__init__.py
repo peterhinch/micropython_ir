@@ -46,6 +46,7 @@ class IR:
             # 1μs resolution
         elif RP2:  # PIO-based RMT-like device
             self._rmt = RP2_RMT(pin_pulse=None, carrier=(pin, cfreq, duty))  # 1μs resolution
+            asize += 1  # Allow for possible extra space pulse
         else:  # Pyboard
             if not IR._active_high:
                 duty = 100 - duty
