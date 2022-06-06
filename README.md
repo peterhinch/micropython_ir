@@ -52,6 +52,7 @@ The drivers support NEC and Sony protocols plus two Philips protocols, namely
 RC-5 and RC-6 mode 0. There is also support for the OrtekMCE protocol used on
 VRC-1100 remotes. These originally supported Microsoft Media Center but can be
 used to control Kodi and (with a suitable receiver) to emulate a PC keyboard.
+The Samsung protocol (NEC variant) is also supported.
 
 Examining waveforms from various remote controls it is evident that numerous
 protocols exist. Some are doubtless proprietary and undocumented. The supported
@@ -77,14 +78,14 @@ microcontroller.
 In my testing a 38KHz demodulator worked with 36KHz and 40KHz remotes, but this
 is obviously neither guaranteed nor optimal.
 
-The transmitter requires a Pyboard 1.x (not Lite), a Pyboard D or an ESP32.
-Output is via an IR LED which will need a transistor to provide sufficient
-current. The ESP32 requires an extra transistor to work as a transmitter.
+The transmitter requires a Pyboard 1.x (not Lite), a Pyboard D, an ESP32 or
+Raspberry Pico (RP2). Output is via an IR LED which will need a transistor to
+provide sufficient current.
 
 ## 3.1 Carrier frequencies
 
-These are as follows. The Samsung and Panasonic remotes appear to use
-proprietary protocols and are not supported by these drivers.
+These are as follows. The Panasonic remote appears to use a proprietary
+protocol and is not supported by these drivers.
 
 | Protocol  | F KHz | How found     | Support |
 |:---------:|:-----:|:-------------:|:-------:|
@@ -92,7 +93,7 @@ proprietary protocols and are not supported by these drivers.
 | RC-5 RC-6 | 36    | Spec/measured | Y       |
 | Sony      | 40    | Spec/measured | Y       |
 | MCE       | 38    | Measured      | Y       | 
-| Samsung   | 38    | Measured      | N       |
+| Samsung   | 38    | Measured      | Y       |
 | Panasonic | 36.3  | Measured      | N       |
 
 # 4. Receiver limitations
@@ -111,8 +112,13 @@ excellent resource.
 
 The NEC protocol:  
 [altium](http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol)  
-[circuitvalley](http://www.circuitvalley.com/2013/09/nec-protocol-ir-infrared-remote-control.html)
+[circuitvalley](http://www.circuitvalley.com/2013/09/nec-protocol-ir-infrared-remote-control.html)  
 [sbprojects.net](https://www.sbprojects.net/knowledge/ir/nec.php)
+
+The Samsung protocol:  
+[Rustic Engineering](https://rusticengineering.wordpress.com/2011/02/09/infrared-room-control-with-samsung-ir-protocol/)  
+[TechDesign Electronics](https://www.techdesign.be/projects/011/011_waves.htm) Waveforms of various protocols.  
+
 
 Philips protocols:  
 [RC5 Wikipedia](https://en.wikipedia.org/wiki/RC-5)  

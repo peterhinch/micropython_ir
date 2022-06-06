@@ -2,8 +2,9 @@
 # NEC protocol.
 
 # Author: Peter Hinch
-# Copyright Peter Hinch 2020 Released under the MIT license
+# Copyright Peter Hinch 2020-2022 Released under the MIT license
 
+# With thanks to J.E. Tannenbaum for information re Samsung protocol
 from micropython import const
 from ir_tx import IR, STOP
 
@@ -12,15 +13,19 @@ _T_ONE = const(1687)
 
 class NEC(IR):
     valid = (0xffff, 0xff, 0)  # Max addr, data, toggle
+    samsung = False
 
-    def __init__(self, pin, freq=38000, verbose=False):  # NEC specifies 38KHz
+    def __init__(self, pin, freq=38000, verbose=False):  # NEC specifies 38KHz also Samsung
         super().__init__(pin, freq, 68, 33, verbose)  # Measured duty ratio 33%
 
     def _bit(self, b):
         self.append(_TBURST, _T_ONE if b else _TBURST)
 
     def tx(self, addr, data, _):  # Ignore toggle
-        self.append(9000, 4500)
+        if self.samsung:
+            self.append(4500, 4500)
+        else:
+            self.append(9000, 4500)
         if addr < 256:  # Short address: append complement
             addr |= ((addr ^ 0xff) << 8)
         for _ in range(16):

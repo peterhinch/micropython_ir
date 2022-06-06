@@ -70,8 +70,8 @@ class IR_GET(IR_RX):
                     print('Protocol start {} {} Burst length {} duration {}'.format(burst[0], burst[1], lb, duration))
                     ok = True
 
-            if not ok and near(burst[0], 4500) and near(burst[1], 4500):  # Samsung?
-                print('Unsupported protocol. Samsung?')
+            if not ok and near(burst[0], 4500) and near(burst[1], 4500) and lb == 67:  # Samsung
+                print('Samsung')
                 ok = True
 
             if not ok and near(burst[0], 3500) and near(burst[1], 1680):  # Panasonic?

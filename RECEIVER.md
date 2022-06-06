@@ -141,9 +141,9 @@ Class variables:
  1. These are constants defining the NEC repeat code and the error codes sent
  to the error function. They are discussed in [section 4](./RECEIVER.md#4-errors).
 
-#### NEC classes
+#### NEC classes (includes Samsung)
 
-`NEC_8`, `NEC_16`
+`NEC_8`, `NEC_16`, `SAMSUNG`
 
 Typical invocation:
 ```python
@@ -156,6 +156,13 @@ address in bits 0-7 and its one's complement in bits 8-15.
 The `NEC_8` class enables error checking for remotes that return an 8 bit
 address: the complement is checked and the address returned as an 8-bit value.
 A 16-bit address will result in an error.
+
+The `SAMSUNG` class returns 16 bit address and data values. The remote sample
+tested did not issue repeat codes - if a button is held down it simply repeated
+the original value. In common with other NEC classes the callback receives a
+value of 0 in the `ctrl` arg.
+
+Thanks are due to J.E.Tannenbaum for information about the Samsung protocol.
 
 #### Sony classes
 

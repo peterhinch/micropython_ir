@@ -1,26 +1,29 @@
 # nec.py Decoder for IR remote control using synchronous code
-# Supports NEC protocol.
+# Supports NEC and Samsung protocols.
+# With thanks to J.E. Tannenbaum for information re Samsung protocol
+
 # For a remote using NEC see https://www.adafruit.com/products/389
 
 # Author: Peter Hinch
-# Copyright Peter Hinch 2020 Released under the MIT license
+# Copyright Peter Hinch 2020-2022 Released under the MIT license
 
 from utime import ticks_us, ticks_diff
 from ir_rx import IR_RX
 
 class NEC_ABC(IR_RX):
-    def __init__(self, pin, extended, callback, *args):
+    def __init__(self, pin, extended, samsung, callback, *args):
         # Block lasts <= 80ms (extended mode) and has 68 edges
         super().__init__(pin, 68, 80, callback, *args)
         self._extended = extended
         self._addr = 0
+        self._leader = 2500 if samsung else 4000  # 4.5ms for Samsung else 9ms
 
     def decode(self, _):
         try:
             if self.edge > 68:
                 raise RuntimeError(self.OVERRUN)
             width = ticks_diff(self._times[1], self._times[0])
-            if width < 4000:  # 9ms leading mark for all valid data
+            if width < self._leader:  # 9ms leading mark for all valid data
                 raise RuntimeError(self.BADSTART)
             width = ticks_diff(self._times[2], self._times[1])
             if width > 3000:  # 4.5ms space for normal data
@@ -55,8 +58,12 @@ class NEC_ABC(IR_RX):
 
 class NEC_8(NEC_ABC):
     def __init__(self, pin, callback, *args):
-        super().__init__(pin, False, callback, *args)
+        super().__init__(pin, False, False, callback, *args)
 
 class NEC_16(NEC_ABC):
     def __init__(self, pin, callback, *args):
-        super().__init__(pin, True, callback, *args)
+        super().__init__(pin, True, False, callback, *args)
+
+class SAMSUNG(NEC_ABC):
+    def __init__(self, pin, callback, *args):
+        super().__init__(pin, True, True, callback, *args)

@@ -22,7 +22,10 @@ device similar to the ESP32 RMT. The device driver is
 [documented here](./RP2_RMT.md); this is for experimenters and those wanting to
 use the library in conjunction with their own PIO assembler code.
 
-## 1.1 Pyboard Wiring
+## 1.1 Wiring
+
+All microcontrollers require an external circuit to drive the LED. The notes
+below on specific microcontrollers assume that such a circuit is used.
 
 I use the following circuit which delivers just under 40mA to the diode. R2 may
 be reduced for higher current.  
@@ -169,7 +172,7 @@ skipping validation.
 | RC6_M0   | 6.0ms | 2.0ms   |
 | MCE      | 6.7ms | 2.0ms   |
 
-#### NEC class
+#### NEC class (also Samsung)
 
 Class `NEC`. Example invocation:
 ```python
@@ -186,6 +189,16 @@ these modes by checking the value of `addr` passed to `.transmit` and sending
 the complement for values < 256.
 
 A value passed in `toggle` is ignored.
+
+For Samsung protocol set the `samsung` class variable `True`:
+```python
+from ir_tx.nec import NEC
+NEC.samsung=True
+```
+Samsung remotes do not seem to use repeat codes: the sample I have simply
+repeats the original code.
+
+Thanks are due to J.E.Tannenbaum for information about the Samsung protocol.
 
 #### Sony classes
 
