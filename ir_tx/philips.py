@@ -12,7 +12,7 @@ _T_RC5 = const(889)  # Time for pulse of carrier
 
 
 class RC5(IR):
-    valid = (0x1f, 0x3f, 1)  # Max addr, data, toggle
+    valid = (0x1f, 0x7f, 1)  # Max addr, data, toggle
 
     def __init__(self, pin, freq=36000, verbose=False):
         super().__init__(pin, freq, 28, 30, verbose)
