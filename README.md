@@ -110,6 +110,8 @@ Sources of information about IR protocols. The `sbprojects.net` site is an
 excellent resource.  
 [General information about IR](https://www.sbprojects.net/knowledge/ir/)
 
+Also [IRMP](https://www.mikrocontroller.net/articles/IRMP_-_english)
+
 The NEC protocol:  
 [altium](http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol)  
 [circuitvalley](http://www.circuitvalley.com/2013/09/nec-protocol-ir-infrared-remote-control.html)  
