@@ -27,7 +27,10 @@ class NEC(IR):
         else:
             self.append(9000, 4500)
         if addr < 256:  # Short address: append complement
-            addr |= ((addr ^ 0xff) << 8)
+            if self.samsung:
+              addr |= addr << 8
+            else:
+              addr |= ((addr ^ 0xff) << 8)
         for _ in range(16):
             self._bit(addr & 1)
             addr >>= 1
