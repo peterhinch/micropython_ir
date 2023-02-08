@@ -135,3 +135,6 @@ MCE protocol:
 
 IR decoders (C sourcecode):  
 [in the Linux kernel](https://github.com/torvalds/linux/tree/master/drivers/media/rc)
+
+Interesting summary of IR protools (with thanks to Martin Bless):  
+[IRMP](https://www.mikrocontroller.net/articles/IRMP_-_english#IR_Protocols)
