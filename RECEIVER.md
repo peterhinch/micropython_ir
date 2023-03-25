@@ -335,7 +335,7 @@ async def main():
     ir = NEC_16(Pin(16, Pin.IN), callback, q)
     await receiver(q)
 
-uasyncio.run(main())
+asyncio.run(main())
 ```
 
 The underlying issues are discussed [here](https://github.com/peterhinch/micropython-async/blob/master/v3/docs/INTERRUPTS.md)
