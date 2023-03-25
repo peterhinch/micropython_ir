@@ -141,6 +141,8 @@ Class variables:
  1. These are constants defining the NEC repeat code and the error codes sent
  to the error function. They are discussed in [section 4](./RECEIVER.md#4-errors).
 
+Users of `uasyncio` please see [Section 8](./RECEIVER.md#8-use-with-uasyncio).
+
 #### NEC classes (includes Samsung)
 
 `NEC_8`, `NEC_16`, `SAMSUNG`
@@ -304,6 +306,40 @@ for a repeat code. Philips codes: RC-5 900μs, RC-6 mode 0 5.5ms.
 It is possible to capture an IR burst from a remote and to re-create it using
 the transmitter. This has limitations and is discussed in detail in
 [the transmitter doc](./TRANSMITTER.md#5-unsupported-protocols).
+
+# 8. Use with uasyncio
+
+The receiver callback runs in a soft ISR (interrupt service routine) context.
+In normal synchronous code this is unlikely to present problems, but the fact
+that an interrupt can occur at any time means that care must be taken to avoid
+a risk of disrupting `uasyncio` internal data. "Thread safe" techniques should
+be used. In particular it is bad practice to create a task in the callback. A
+simple approach is to use a [ThreadSafeQueue](https://github.com/peterhinch/micropython-async/blob/master/v3/docs/THREADING.md#22-threadsafequeue):
+
+```python
+import uasyncio as asyncio
+from threadsafe import ThreadSafeQueue
+from machine import Pin
+from ir_rx import NEC_16
+
+def callback(data, addr, ctrl, qu):  # Runs in ISR context
+    if not qu.full():
+        qu.put_sync((data, addr))
+        
+async def receiver(q):
+    async for data in q:  # Task pauses here until data arrives
+        print(f"Received {data}")
+          
+async def main():
+    q = ThreadSafeQueue(20)
+    ir = NEC_16(Pin(16, Pin.IN), callback, q)
+    await receiver(q)
+
+uasyncio.run(main())
+```
+
+The underlying issues are discussed [here](https://github.com/peterhinch/micropython-async/blob/master/v3/docs/INTERRUPTS.md)
+and [here](https://github.com/peterhinch/micropython-async/blob/master/v3/docs/THREADING.md).
 
 # Appendix 1 NEC Protocol description
 
