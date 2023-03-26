@@ -331,7 +331,7 @@ async def receiver(q):
         print(f"Received {data}")
           
 async def main():
-    q = ThreadSafeQueue(20)
+    q = ThreadSafeQueue([0 for _ in range(20)])
     ir = NEC_16(Pin(16, Pin.IN), callback, q)
     await receiver(q)
 
