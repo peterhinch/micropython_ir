@@ -4,6 +4,7 @@
 # Released under the MIT License (MIT). See LICENSE.
 
 # Copyright (c) 2020-2021 Peter Hinch
+from typing import Literals
 from sys import platform
 ESP32 = platform == 'esp32'  # Loboris not supported owing to RMT
 RP2 = platform == 'rp2'
@@ -21,6 +22,7 @@ from time import ticks_us, ticks_diff
 # import micropython
 # micropython.alloc_emergency_exception_buf(100)
 
+OnBusyOptions = Literals['wait', 'pass']
 
 # Shared by NEC
 STOP = const(0)  # End of data
@@ -77,7 +79,7 @@ class IR:
 
     # Public interface
     # Before populating array, zero pointer, set notional carrier state (off).
-    def transmit(self, addr, data, toggle=0, validate=False):  # NEC: toggle is unused
+    def transmit(self, addr, data, toggle=0, validate=False, wait_on_busy=False):  # NEC: toggle is unused
         t = ticks_us()
         if validate:
             if addr > self.valid[0] or addr < 0:
@@ -89,13 +91,15 @@ class IR:
         self.aptr = 0  # Inital conditions for tx: index into array
         self.carrier = False
         self.tx(addr, data, toggle)  # Subclass populates ._arr
-        self.trigger()  # Initiate transmission
+        self.trigger(onBusy)  # Initiate transmission
         if self.timeit:
             dt = ticks_diff(ticks_us(), t)
             print('Time = {}μs'.format(dt))
 
     # Subclass interface
-    def trigger(self):  # Used by NEC to initiate a repeat frame
+    def trigger(self, wait_on_busy=False):  # Used by NEC to initiate a repeat frame
+        if self._should_pass(wait_on_busy):
+            return
         if ESP32:
             self._rmt.write_pulses(tuple(self._mva[0 : self.aptr]))
         elif RP2:
@@ -118,6 +122,24 @@ class IR:
         self.verbose and print('add', t)
         # .carrier unaffected
         self._arr[self.aptr - 1] += t
+
+    def _should_pass(self, wait_on_busy=False): # If transmitter is busy, wait or pass
+        if ESP32:
+            if wait_on_busy:
+                while self._rtm.wait_done():
+                    pass
+            else:
+                if self._rtm.wait_done():
+                    return True
+        elif RP2:
+            if wait_on_busy:
+                while self._rtm.busy():
+                    pass
+            else:
+                if self._rtm.busy():
+                    return True
+        # Pyboard busy check not supported
+        return False
 
 
 # Given an iterable (e.g. list or tuple) of times, emit it as an IR stream.
