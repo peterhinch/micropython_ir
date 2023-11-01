@@ -63,21 +63,33 @@ class IR:
         self.verbose = verbose
         self.carrier = False  # Notional carrier state while encoding biphase
         self.aptr = 0  # Index into array
+        self._busy = False
 
     def _cb(self, t):  # T5 callback, generate a carrier mark or space
+        self._busy = True
         t.deinit()
         p = self.aptr
         v = self._arr[p]
         if v == STOP:
             self._ch.pulse_width_percent(self._space)  # Turn off IR LED.
+            self._busy = False
             return
         self._ch.pulse_width_percent(self._space if p & 1 else self._duty)
         self._tim.init(prescaler=84, period=v, callback=self._tcb)
         self.aptr += 1
 
+    def busy(self):
+        if ESP32:
+            return self._rmt.wait_done()
+        if RP2:
+            return self._rmt.busy()
+        return self._busy
+
     # Public interface
     # Before populating array, zero pointer, set notional carrier state (off).
     def transmit(self, addr, data, toggle=0, validate=False):  # NEC: toggle is unused
+        while self.busy():
+            pass
         t = ticks_us()
         if validate:
             if addr > self.valid[0] or addr < 0:
