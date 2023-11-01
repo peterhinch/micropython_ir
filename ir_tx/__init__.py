@@ -4,7 +4,6 @@
 # Released under the MIT License (MIT). See LICENSE.
 
 # Copyright (c) 2020-2021 Peter Hinch
-from typing import Literals
 from sys import platform
 ESP32 = platform == 'esp32'  # Loboris not supported owing to RMT
 RP2 = platform == 'rp2'
@@ -21,8 +20,6 @@ from array import array
 from time import ticks_us, ticks_diff
 # import micropython
 # micropython.alloc_emergency_exception_buf(100)
-
-OnBusyOptions = Literals['wait', 'pass']
 
 # Shared by NEC
 STOP = const(0)  # End of data
@@ -91,7 +88,7 @@ class IR:
         self.aptr = 0  # Inital conditions for tx: index into array
         self.carrier = False
         self.tx(addr, data, toggle)  # Subclass populates ._arr
-        self.trigger(onBusy)  # Initiate transmission
+        self.trigger(wait_on_busy)  # Initiate transmission
         if self.timeit:
             dt = ticks_diff(ticks_us(), t)
             print('Time = {}μs'.format(dt))
