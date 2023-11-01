@@ -62,8 +62,7 @@ can be reassigned.
 
 The device driver has no dependencies.
 
-On ESP32 a firmware version >= V1.17 is required. The Loboris port is not
-supported owing to the need for the RMT device and other issues.
+On ESP32 a firmware version >= V1.17 is required.
 
 The demo program uses `uasyncio` primitives from
 [this repo](https://github.com/peterhinch/micropython-async). Clone the repo to
@@ -136,7 +135,7 @@ Constructor args:
  Sony is 40000 and Philips is 36000.
  3. `verbose=False` If `True` emits (a lot of) debug output.
 
-Method:
+Methods:
  1. `transmit(addr, data, toggle=0, validate=False)` Args `addr`, `data` and
  `toggle` are positive integers. The maximum vaues are protocol dependent. If
  `validate` is `True` passed values are checked and a `ValueError` raised if
@@ -144,6 +143,7 @@ Method:
  discarded. For example if an address of 0x11 is passed to `MCE.transmit`, the
  address sent will be 1 because that protocol supports only a four bit address
  field. The `toggle` field is unused by some protocols when 0 should be passed.
+ 2. `busy()` Returns `True` while data is being transmitted.
 
 Class method:
  1. `active_low` No args. Pyboard only. A `ValueError` will be thrown on ESP32.
@@ -157,10 +157,17 @@ Class varaible:
 
 The `transmit` method is synchronous with rapid return. Actual transmission
 occurs as a background process, on the Pyboard controlled by timers 2 and 5. On
-ESP32 the RMT class is used. Execution times were measured on a Pyboard 1.1 and
-the ESP32 reference board  without SPIRAM. Tests were done at stock frequency and
-with `validate=True`, `verbose=False`. A small saving could be achieved by
-skipping validation.
+ESP32 the RMT class is used and on RP2 the PIO is used to emulate the RMT. If
+`transmit` is called while a prior transmission is in progress, it will block
+until the transmission is complete before commencing the next. Blocking can be
+avoided by checking the `busy` status prior to starting a transmission. Note
+that sending bursts in quick succession may confuse the receiving device: these
+are typically designed for a transmitter that sends a burst in response to a
+button press with a gap likely to be well over 100ms.
+
+Execution times were measured on a Pyboard 1.1 and the ESP32 reference board
+without SPIRAM. Tests were done at stock frequency and with `validate=True`,
+`verbose=False`. A small saving could be achieved by skipping validation.
 
 | Protocol | ESP32 | Pyboard |
 |:--------:|:-----:|:-------:|
