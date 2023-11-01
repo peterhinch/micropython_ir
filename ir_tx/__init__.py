@@ -17,7 +17,7 @@ else:
 
 from micropython import const
 from array import array
-from time import ticks_us, ticks_diff
+from time import ticks_us, ticks_diff, sleep_ms
 # import micropython
 # micropython.alloc_emergency_exception_buf(100)
 
@@ -80,7 +80,7 @@ class IR:
 
     def busy(self):
         if ESP32:
-            return self._rmt.wait_done()
+            return not self._rmt.wait_done()
         if RP2:
             return self._rmt.busy()
         return self._busy
@@ -105,6 +105,7 @@ class IR:
         if self.timeit:
             dt = ticks_diff(ticks_us(), t)
             print('Time = {}μs'.format(dt))
+        sleep_ms(1)  # Ensure ._busy is set prior to return
 
     # Subclass interface
     def trigger(self):  # Used by NEC to initiate a repeat frame
