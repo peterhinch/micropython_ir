@@ -35,15 +35,12 @@ A remote using the NEC protocol is [this one](https://www.adafruit.com/products/
 # 2. Installation and demo scripts
 
 The receiver is a Python package. This minimises RAM usage: applications only
-import the device driver for the protocol in use. Clone the repository to the
-current directory of your PC with:
+import the device driver for the protocol in use. It may be installed using
+ [mpremote](https://docs.micropython.org/en/latest/reference/mpremote.html) on
+ the PC:
 ```bash
-$ git clone https://github.com/peterhinch/micropython_ir
+$ mpremote mip install "github:peterhinch/micropython_ir/ir_rx"
 ```
-
-Copy the following to the target filesystem:
- 1. `ir_rx` Directory and contents.
-
 There are no dependencies.
 
 ## 2.1 Test scripts
@@ -292,7 +289,7 @@ software timer ensures that `.decode` and the user callback can allocate.
 When the timer times out its callback (`.decode`) decodes the data. `.decode`
 is a method of the protocol specific subclass; on completion it calls the
 `do_callback` method of the ABC. This resets the edge reception and calls
-either the user callback or the error function (if provided). 
+either the user callback or the error function (if provided).
 
 The size of the array and the duration of the timer are protocol dependent and
 are set by the subclasses. The `.decode` method is provided in the subclass.
@@ -325,11 +322,11 @@ from ir_rx import NEC_16
 def callback(data, addr, ctrl, qu):  # Runs in ISR context
     if not qu.full():
         qu.put_sync((data, addr))
-        
+
 async def receiver(q):
     async for data in q:  # Task pauses here until data arrives
         print(f"Received {data}")
-          
+
 async def main():
     q = ThreadSafeQueue([0 for _ in range(20)])
     ir = NEC_16(Pin(16, Pin.IN), callback, q)

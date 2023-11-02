@@ -65,26 +65,21 @@ The device driver has no dependencies.
 On ESP32 a firmware version >= V1.17 is required.
 
 The demo program uses `uasyncio` primitives from
-[this repo](https://github.com/peterhinch/micropython-async). Clone the repo to
-a directory on your PC:
+[this repo](https://github.com/peterhinch/micropython-async). These may be
+installed with
 ```bash
-$ git clone https://github.com/peterhinch/micropython-async
+$ mpremote mip install "github:peterhinch/micropython-async/v3/primitives"
 ```
-move to its `v3` directory, and copy the `primitives` directory with its
-contents to the filesystem.
 
 ## 2.2 Installation
 
 The transmitter is a Python package. This minimises RAM usage: applications
-only import the device driver for the protocol in use. Clone the repository to
-the current directory of your PC with:
+only import the device driver for the protocol in use. It may be installed using
+ [mpremote](https://docs.micropython.org/en/latest/reference/mpremote.html) on
+ the PC:
 ```bash
-$ git clone https://github.com/peterhinch/micropython_ir
+$ mpremote mip install "github:peterhinch/micropython_ir/ir_tx"
 ```
-
-Copy the following to the target filesystem:
- 1. `ir_tx` Directory and contents.
-
 The demo is of a 2-button remote controller with auto-repeat. It may be run by
 issuing:
 ```python
