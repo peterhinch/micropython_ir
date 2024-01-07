@@ -2,13 +2,13 @@
 # IR_RX abstract base class for IR receivers.
 
 # Author: Peter Hinch
-# Copyright Peter Hinch 2020-2021 Released under the MIT license
+# Copyright Peter Hinch 2020-2024 Released under the MIT license
+# Thanks are due to @Pax-IT for diagnosing a problem with ESP32C3.
 
 from machine import Timer, Pin
 from array import array
 from utime import ticks_us
 
-# Save RAM
 # from micropython import alloc_emergency_exception_buf
 # alloc_emergency_exception_buf(100)
 
@@ -18,7 +18,9 @@ from utime import ticks_us
 # the worst case block transmission time, but be less than the interval between
 # a block start and a repeat code start (~108ms depending on protocol)
 
-class IR_RX():
+
+class IR_RX:
+    Timer_id = -1  # Software timer but enable override
     # Result/error codes
     # Repeat button code
     REPEAT = -1
@@ -36,13 +38,13 @@ class IR_RX():
         self._tblock = tblock
         self.callback = callback
         self.args = args
-        self._errf = lambda _ : None
+        self._errf = lambda _: None
         self.verbose = False
 
-        self._times = array('i',  (0 for _ in range(nedges + 1)))  # +1 for overrun
-        pin.irq(handler = self._cb_pin, trigger = (Pin.IRQ_FALLING | Pin.IRQ_RISING))
+        self._times = array("i", (0 for _ in range(nedges + 1)))  # +1 for overrun
+        pin.irq(handler=self._cb_pin, trigger=(Pin.IRQ_FALLING | Pin.IRQ_RISING))
         self.edge = 0
-        self.tim = Timer(-1)  # Sofware timer
+        self.tim = Timer(self.Timer_id)  # Defaul is sofware timer
         self.cb = self.decode
 
     # Pin interrupt. Save time of each edge for later decode.
@@ -51,7 +53,7 @@ class IR_RX():
         # On overrun ignore pulses until software timer times out
         if self.edge <= self._nedges:  # Allow 1 extra pulse to record overrun
             if not self.edge:  # First edge received
-                self.tim.init(period=self._tblock , mode=Timer.ONE_SHOT, callback=self.cb)
+                self.tim.init(period=self._tblock, mode=Timer.ONE_SHOT, callback=self.cb)
             self._times[self.edge] = t
             self.edge += 1
 
@@ -66,5 +68,5 @@ class IR_RX():
         self._errf = func
 
     def close(self):
-        self._pin.irq(handler = None)
+        self._pin.irq(handler=None)
         self.tim.deinit()

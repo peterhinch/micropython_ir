@@ -96,7 +96,7 @@ while True:
 
 #### Common to all classes
 
-Constructor args:  
+##### Constructor args:  
  1. `pin` is a `machine.Pin` instance configured as an input, connected to the
  IR decoder chip.  
  2. `callback` is the user supplied callback.
@@ -117,7 +117,7 @@ The user callback takes the following args:
 Bound variable:  
  1. `verbose=False` If `True` emits debug output.
 
-Methods:
+##### Methods:
  1. `error_function` Arg: a function taking a single `int` arg. If specified
  the function will be called if an error occurs. The arg value corresponds to
  the error code. Typical usage might be to provide some user feedback of
@@ -134,8 +134,11 @@ from ir_rx.print_error import print_error  # Optional print of error codes
 # Assume ir is an instance of an IR receiver class
 ir.error_function(print_error)
 ```
-Class variables:
- 1. These are constants defining the NEC repeat code and the error codes sent
+##### Class variables:
+ 1. `Timer_id=-1` By default the driver uses a software timer. The ESP32C3  does
+ not support these. This class variable offers a workround, See
+ [section 5.1](./RECEIVER.md#51-timer-id).
+ 2. There are constants defining the NEC repeat code and the error codes sent
  to the error function. They are discussed in [section 4](./RECEIVER.md#4-errors).
 
 Users of `uasyncio` please see [Section 8](./RECEIVER.md#8-use-with-uasyncio).
@@ -277,6 +280,22 @@ Sony 20 bit: On ESP32 some errors occurred when repeats occurred.
 Philips RC-5: On ESP32 with one remote control many errors occurred, but paired
 with the transmitter in this repo it worked.  
 Philips RC-6: No issues. Only tested against the transmitter in this repo.
+
+## 5.1 Timer ID
+
+The ESP32C3 does not support software timers. This results in a crash. It is
+possible to assign a hardware timer as follows (example is for NEC but applies
+to any class):
+```python
+from ir_rx.nec import NEC_8
+NEC_8.Timer_id = 0  # Use hardware timer 0
+# Code omitted
+ir = NEC_8(Pin(8, Pin.IN), callback)
+```
+Note that assigning a hardware timer is only possible on platforms where the
+timer callback is a soft interrupt service routine (see below).
+
+Thanks are due to @Pax-IT for diagnosing this problem.
 
 # 6. Principle of operation
 
