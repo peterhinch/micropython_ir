@@ -69,7 +69,7 @@ class RP2_RMT:
         self.ict = None  # Current IRQ count
         self.icm = 0  # End IRQ count
         self.reps = 0  # 0 == forever n == no. of reps
-        rp2.PIO(0).irq(handler=self._cb, hard=True)
+        rp2.PIO(0).irq(handler=self._cb, trigger=1 << (sm_no + 8), hard=True)
 
     # IRQ callback. Because of FIFO IRQ's keep arriving after STOP.
     def _cb(self, pio):
