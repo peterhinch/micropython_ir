@@ -336,7 +336,7 @@ simple approach is to use a [ThreadSafeQueue](https://github.com/peterhinch/micr
 import uasyncio as asyncio
 from threadsafe import ThreadSafeQueue
 from machine import Pin
-from ir_rx import NEC_16
+from ir_rx.nec import NEC_16
 
 def callback(data, addr, ctrl, qu):  # Runs in ISR context
     if not qu.full():
