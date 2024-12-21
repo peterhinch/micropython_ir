@@ -349,7 +349,7 @@ import ujson
 
 if platform == 'esp32':
     from machine import Pin
-    pin = (Pin(23, Pin.OUT, value = 0), Pin(21, Pin.OUT, value = 0))
+    pin = Pin(23, Pin.OUT, value = 0)
 else:
     from pyb import Pin, LED
     pin = Pin('X1')
