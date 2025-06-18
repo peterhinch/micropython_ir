@@ -341,7 +341,7 @@ import ujson
 
 lst = test()  # May report unsupported or unknown protocol
 with open('burst.py', 'w') as f:
-    ujson.dump(lst, f)
+    ujson.dump(lst['raw'], f)
 ```
 This replays it:  
 ```python

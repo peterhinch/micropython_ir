@@ -64,7 +64,9 @@ This script waits for a single burst from the remote and prints the timing of
 the pulses followed by its best guess at the protocol. It correctly identifies
 supported protocols, but can wrongly identify unsupported protocols. The
 report produced by the script exposed to an unknown protocol is unpredictable.
-The `test()` function returns a list of the mark and space periods (in μs).
+The `test()` function returns a dictionary containing two keys, `raw` and
+`protocol`. `raw` is a list of the mark and space periods (in μs). `protocol`
+is the protocl as a string
 
 # 3. The driver
 
