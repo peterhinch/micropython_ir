@@ -272,6 +272,15 @@ I could find stated that the value should be 3. I implemented this as a class
 variable `MCE.init_cs=4`. This enables it to be changed if some receivers
 require 3.
 
+#### OpenLASIR class
+
+Class `OpenLASIR`. Example invocation:
+```python
+from ir_tx.openlasir import OpenLASIR
+```
+
+The [OpenLASIR](https://github.com/danielweidman/OpenLASIR) protocol uses an 8 bit address and 16 bit command.
+
 # 4. Principle of operation
 
 The classes inherit from the abstract base class `IR`. This has an array `.arr`
