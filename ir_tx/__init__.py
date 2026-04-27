@@ -5,6 +5,7 @@
 
 # Copyright (c) 2020-2021 Peter Hinch
 from sys import platform
+from machine import idle
 ESP32 = platform == 'esp32'  # Loboris not supported owing to RMT
 RP2 = platform == 'rp2'
 if ESP32:
@@ -57,7 +58,7 @@ class IR:
             self._duty = duty
             self._tim = Timer(5)  # Timer 5 controls carrier on/off times
         self._tcb = self._cb  # Pre-allocate
-        self._arr = array('H', 0 for _ in range(asize))  # on/off times (μs)
+        self._arr = array('H', (0 for _ in range(asize)))  # on/off times (μs)
         self._mva = memoryview(self._arr)
         # Subclass interface
         self.verbose = verbose
@@ -89,7 +90,7 @@ class IR:
     # Before populating array, zero pointer, set notional carrier state (off).
     def transmit(self, addr, data, toggle=0, validate=False):  # NEC: toggle is unused
         while self.busy():
-            pass
+            idle()
         t = ticks_us()
         if validate:
             if addr > self.valid[0] or addr < 0:
