@@ -17,6 +17,7 @@ class IR_GET(IR_RX):
         self.display = display
         super().__init__(pin, nedges, twait, lambda *_ : None)
         self.data = None
+        self.protocol = None
 
     def decode(self, _):
         def near(v, target):
@@ -33,55 +34,62 @@ class IR_GET(IR_RX):
         lb = len(burst)  # Actual length
         # Duration of pulse train 24892 for RC-5 22205 for RC-6
         duration = ticks_diff(self._times[lb - 1], self._times[0])
+    
+        for x, e in enumerate(burst):
+            if self.display: print('{:03d} {:5d}'.format(x, e))
+        if self.display: print()
+        # Attempt to determine protocol
+        ok = False  # Protocol not yet found
+        if near(burst[0], 9000) and lb == 67:
+            if self.display: print('NEC')
+            self.protocol = 'NEC'
+            ok = True
 
-        if self.display:
-            for x, e in enumerate(burst):
-                print('{:03d} {:5d}'.format(x, e))
-            print()
-            # Attempt to determine protocol
-            ok = False  # Protocol not yet found
-            if near(burst[0], 9000) and lb == 67:
-                print('NEC')
+        if not ok and near(burst[0], 2400) and near(burst[1], 600):  # Maybe Sony
+            try:
+                nbits = {25:12, 31:15, 41:20}[lb]
+            except KeyError:
+                pass
+            else:
+                ok = True
+                self.protocol = 'Sony'
+                if self.display: print('Sony {}bit'.format(nbits))
+
+        if not ok and near(burst[0], 889):  # Maybe RC-5
+            if near(duration, 24892) and near(max(burst), 1778):
+                self.protocol = 'RC-5'
+                if self.display: print('Philps RC-5')
                 ok = True
 
-            if not ok and near(burst[0], 2400) and near(burst[1], 600):  # Maybe Sony
-                try:
-                    nbits = {25:12, 31:15, 41:20}[lb]
-                except KeyError:
-                    pass
-                else:
-                    ok = True
-                    print('Sony {}bit'.format(nbits))
-
-            if not ok and near(burst[0], 889):  # Maybe RC-5
-                if near(duration, 24892) and near(max(burst), 1778):
-                    print('Philps RC-5')
-                    ok = True
-
-            if not ok and near(burst[0], 2666) and near(burst[1], 889):  # RC-6?
-                if near(duration, 22205) and near(burst[1], 889) and near(burst[2], 444):
-                    print('Philips RC-6 mode 0')
-                    ok = True
-
-            if not ok and near(burst[0], 2000) and near(burst[1], 1000):
-                if near(duration, 19000):
-                    print('Microsoft MCE edition protocol.')
-                    # Constant duration, variable burst length, presumably bi-phase
-                    print('Protocol start {} {} Burst length {} duration {}'.format(burst[0], burst[1], lb, duration))
-                    ok = True
-
-            if not ok and near(burst[0], 4500) and near(burst[1], 4500) and lb == 67:  # Samsung
-                print('Samsung')
+        if not ok and near(burst[0], 2666) and near(burst[1], 889):  # RC-6?
+            if near(duration, 22205) and near(burst[1], 889) and near(burst[2], 444):
+                self.protocol = 'RC-6'
+                if self.display: print('Philips RC-6 mode 0')
                 ok = True
 
-            if not ok and near(burst[0], 3500) and near(burst[1], 1680):  # Panasonic?
-                print('Unsupported protocol. Panasonic?')
+        if not ok and near(burst[0], 2000) and near(burst[1], 1000):
+            if near(duration, 19000):
+                self.protocol = 'MCE'
+                if self.display: print('Microsoft MCE edition protocol.')
+                # Constant duration, variable burst length, presumably bi-phase
+                if self.display: print('Protocol start {} {} Burst length {} duration {}'.format(burst[0], burst[1], lb, duration))
                 ok = True
 
-            if not ok:
-                print('Unknown protocol start {} {} Burst length {} duration {}'.format(burst[0], burst[1], lb, duration))
+        if not ok and near(burst[0], 4500) and near(burst[1], 4500) and lb == 67:  # Samsung
+            self.protocol = 'Samsung'
+            if self.display: print('Samsung')
+            ok = True
 
-            print()
+        if not ok and near(burst[0], 3500) and near(burst[1], 1680):  # Panasonic?
+            self.protocol = 'Panasonic'
+            if self.display: print('Unsupported protocol. Panasonic?')
+            ok = True
+
+        if not ok:
+            self.protocol = 'Unknown'
+            if self.display: print('Unknown protocol start {} {} Burst length {} duration {}'.format(burst[0], burst[1], lb, duration))
+        
+        if self.display: print()
         self.data = burst
         # Set up for new data burst. Run null callback
         self.do_callback(0, 0, 0)
@@ -90,7 +98,7 @@ class IR_GET(IR_RX):
         while self.data is None:
             sleep_ms(5)
         self.close()
-        return self.data
+        return {"raw": self.data, "protocol": self.protocol}
 
 def test():
     # Define pin according to platform
