@@ -52,7 +52,8 @@ The drivers support NEC and Sony protocols plus two Philips protocols, namely
 RC-5 and RC-6 mode 0. There is also support for the OrtekMCE protocol used on
 VRC-1100 remotes. These originally supported Microsoft Media Center but can be
 used to control Kodi and (with a suitable receiver) to emulate a PC keyboard.
-The Samsung protocol (NEC variant) is also supported.
+The Samsung protocol (NEC variant) is also supported. The OpenLASIR protocol 
+(another NEC variant) is supported too.
 
 Examining waveforms from various remote controls it is evident that numerous
 protocols exist. Some are doubtless proprietary and undocumented. The supported
@@ -95,6 +96,7 @@ protocol and is not supported by these drivers.
 | MCE       | 38    | Measured      | Y       | 
 | Samsung   | 38    | Measured      | Y       |
 | Panasonic | 36.3  | Measured      | N       |
+| OpenLASIR | 38    | Spec          | Y       |
 
 # 4. Receiver limitations
 
@@ -132,6 +134,10 @@ Sony protocol:
 
 MCE protocol:  
 [OrtekMCE](http://www.hifi-remote.com/johnsfine/DecodeIR.html#OrtekMCE)
+
+OpenLASIR protocol:
+[GitHub](https://github.com/danielweidman/OpenLASIR)
+
 
 IR decoders (C sourcecode):  
 [in the Linux kernel](https://github.com/torvalds/linux/tree/master/drivers/media/rc)

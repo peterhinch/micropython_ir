@@ -229,6 +229,17 @@ could find stated that the value should be 3. I implemented this as a class
 variable `MCE.init_cs=4`. This enables it to be changed if some remotes use 3.
 If the value is set to -1 the check will be skipped.
 
+#### OpenLASIR class
+
+`OpenLASIR`
+
+Typical invocation:
+```python
+from ir_rx.openlasir import OpenLASIR
+```
+
+This supports the physical IR layer for [OpenLASIR](https://github.com/danielweidman/OpenLASIR).
+
 # 4. Errors
 
 IR reception is inevitably subject to errors, notably if the remote is operated
